@@ -21,8 +21,23 @@ async def lifespan(app: FastAPI):
     # Startup
     await init_db()
     print("✅ Database initialized")
+
+    # Resume any live strategies that were active before last shutdown
+    from trading.live_runner import start as runner_start
+    from models.db import async_session, LiveStrategy
+    from sqlalchemy import select
+    async with async_session() as db:
+        result = await db.execute(
+            select(LiveStrategy).where(LiveStrategy.is_active == True)  # noqa: E712
+        )
+        active = result.scalars().all()
+        for live in active:
+            runner_start(live.id, live.strategy_id, live.ticker, live.amount_usd)
+            print(f"▶  Resumed live strategy #{live.id} ({live.ticker})")
+
     yield
-    # Shutdown
+
+    # Shutdown — tasks will be cancelled by the event loop automatically
     print("👋 Shutting down LeanTrade")
 
 

@@ -57,9 +57,10 @@ export const listBacktests = async () => {
   return res.data
 }
 
-export const deployStrategy = async (strategyId, amountUsd = 100) => {
+export const deployStrategy = async (strategyId, ticker = 'BTC/USD', amountUsd = 100) => {
   const res = await api.post('/api/deploy', {
     strategy_id: strategyId,
+    ticker,
     amount_usd: amountUsd,
   })
   return res.data
@@ -67,6 +68,16 @@ export const deployStrategy = async (strategyId, amountUsd = 100) => {
 
 export const stopStrategy = async (liveId) => {
   const res = await api.delete(`/api/deploy/${liveId}`)
+  return res.data
+}
+
+export const listLiveStrategies = async () => {
+  const res = await api.get('/api/live-strategies')
+  return res.data
+}
+
+export const getLiveStrategy = async (liveId) => {
+  const res = await api.get(`/api/live-strategies/${liveId}`)
   return res.data
 }
 

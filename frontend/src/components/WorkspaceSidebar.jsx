@@ -1,9 +1,10 @@
-import { BarChart2, Boxes, Rocket } from 'lucide-react'
+import { BarChart2, Boxes, MessageSquare, Zap } from 'lucide-react'
 
 const NAV = [
-  { id: 'production', label: 'Production', icon: Rocket },
+  { id: 'chats', label: 'Chats', icon: MessageSquare },
   { id: 'backtests', label: 'Backtests', icon: BarChart2 },
   { id: 'models', label: 'Models', icon: Boxes },
+  { id: 'live', label: 'Live', icon: Zap },
 ]
 
 export default function WorkspaceSidebar({ activeView, onSelectView }) {

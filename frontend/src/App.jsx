@@ -3,17 +3,20 @@ import { TrendingUp } from 'lucide-react'
 import ChatInterface from './components/ChatInterface'
 import BacktestChart from './components/BacktestChart'
 import ModelsPanel from './components/ModelsPanel'
+import LiveTradingPanel from './components/LiveTradingPanel'
 import WorkspaceSidebar from './components/WorkspaceSidebar'
 import SideListPanel from './components/SideListPanel'
 import { useChat } from './hooks/useChat'
 import { useStrategy, useBacktest, useModels } from './hooks/useStrategy'
+import { useLiveTrading } from './hooks/useLiveTrading'
 
 export default function App() {
   const { messages, isLoading, error, sessionId, sessions, latestStrategyId, latestBacktestId, sendUserMessage, clearChat, refreshSessions, loadSession } = useChat()
   const { fetchStrategy } = useStrategy()
   const { backtestData, savedBacktests, loading: btLoading, error: btError, fetchBacktest, refreshBacktests } = useBacktest()
   const { models, selectedModel, selectedCode, loading: modelsLoading, error: modelsError, refreshModels, selectModel } = useModels()
-  const [activeView, setActiveView] = useState('production')
+  const { liveStrategies, selectedLive, loading: liveLoading, error: liveError, refreshList: refreshLive, selectLive, deploy, stop } = useLiveTrading()
+  const [activeView, setActiveView] = useState('chats')
 
   useEffect(() => {
     if (latestStrategyId) {
@@ -34,11 +37,22 @@ export default function App() {
     refreshBacktests()
     refreshModels()
     refreshSessions()
-  }, [refreshBacktests, refreshModels, refreshSessions])
+    refreshLive()
+  }, [refreshBacktests, refreshModels, refreshSessions, refreshLive])
 
   const handleSelectBacktest = (id) => {
     fetchBacktest(id)
     setActiveView('backtests')
+  }
+
+  const handleSelectLive = (id) => {
+    selectLive(id)
+    setActiveView('live')
+  }
+
+  const handleDeploy = async (strategyId, ticker, amountUsd) => {
+    await deploy(strategyId, ticker, amountUsd)
+    setActiveView('live')
   }
 
   return (
@@ -78,8 +92,8 @@ export default function App() {
           activeView={activeView}
           sessions={sessions}
           activeSessionId={sessionId}
-          onSelectSession={(sid) => { loadSession(sid); setActiveView('production') }}
-          onNewChat={() => { clearChat(); setActiveView('production') }}
+          onSelectSession={(sid) => { loadSession(sid); setActiveView('chats') }}
+          onNewChat={() => { clearChat(); setActiveView('chats') }}
           onRefreshSessions={refreshSessions}
           backtests={savedBacktests}
           activeBacktestId={backtestData?.id || latestBacktestId}
@@ -90,11 +104,16 @@ export default function App() {
           onSelectModel={selectModel}
           onRefreshModels={refreshModels}
           modelsLoading={modelsLoading}
+          liveStrategies={liveStrategies}
+          selectedLiveId={selectedLive?.id}
+          onSelectLive={handleSelectLive}
+          onRefreshLive={refreshLive}
+          liveLoading={liveLoading}
         />
 
         {/* Col 3 — detail panel */}
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0, background: '#ffffff' }}>
-          {activeView === 'production' && (
+          {activeView === 'chats' && (
             <ChatInterface
               messages={messages}
               isLoading={isLoading}
@@ -118,6 +137,17 @@ export default function App() {
               selectedCode={selectedCode}
               loading={modelsLoading}
               error={modelsError}
+            />
+          )}
+          {activeView === 'live' && (
+            <LiveTradingPanel
+              selectedLive={selectedLive}
+              models={models}
+              loading={liveLoading}
+              error={liveError}
+              onDeploy={handleDeploy}
+              onStop={stop}
+              onRefresh={() => selectedLive ? selectLive(selectedLive.id) : refreshLive()}
             />
           )}
         </main>

@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react'
 import { v4 as uuidv4 } from 'uuid'
-import { sendMessage, listConversations, getConversation } from '../utils/api'
+import { sendMessage, getConversation } from '../utils/api'
+
+const LS_KEY = 'lt_sessions'
 
 const WELCOME_MESSAGE = {
   id: 'welcome',
@@ -19,24 +21,39 @@ I'm your AI trading advisor. Let's build a profitable strategy together.
   timestamp: new Date().toISOString(),
 }
 
+function loadStoredSessions() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]') } catch { return [] }
+}
+
+function saveSessionToStorage(sessionMeta) {
+  const stored = loadStoredSessions()
+  const idx = stored.findIndex(s => s.session_id === sessionMeta.session_id)
+  if (idx >= 0) {
+    stored[idx] = { ...stored[idx], ...sessionMeta }
+  } else {
+    stored.unshift(sessionMeta)
+  }
+  // Keep only 30 most recent
+  const trimmed = stored.slice(0, 30)
+  localStorage.setItem(LS_KEY, JSON.stringify(trimmed))
+  return trimmed
+}
+
 export function useChat() {
   const [messages, setMessages] = useState([WELCOME_MESSAGE])
   const [isLoading, setIsLoading] = useState(false)
   const [sessionId, setSessionId] = useState(() => uuidv4())
   const [error, setError] = useState(null)
-  const [sessions, setSessions] = useState([])
+  const [sessions, setSessions] = useState(() => loadStoredSessions())
+  const [messageCount, setMessageCount] = useState(0)
 
   const [latestStrategyId, setLatestStrategyId] = useState(null)
   const [latestBacktestId, setLatestBacktestId] = useState(null)
   const [deployedLiveId, setDeployedLiveId] = useState(null)
 
-  const refreshSessions = useCallback(async () => {
-    try {
-      const data = await listConversations()
-      setSessions(data)
-    } catch (e) {
-      console.error('Failed to load sessions', e)
-    }
+  // No-op kept for API compatibility — sessions come from localStorage now
+  const refreshSessions = useCallback(() => {
+    setSessions(loadStoredSessions())
   }, [])
 
   const loadSession = useCallback(async (sid) => {
@@ -52,6 +69,7 @@ export function useChat() {
         timestamp: m.timestamp || new Date().toISOString(),
       }))
       setMessages(loaded.length ? loaded : [WELCOME_MESSAGE])
+      setMessageCount(loaded.length)
       setSessionId(sid)
       setLatestStrategyId(null)
       setLatestBacktestId(null)
@@ -100,21 +118,36 @@ export function useChat() {
       if (data.strategy_id) setLatestStrategyId(data.strategy_id)
       if (data.backtest_id) setLatestBacktestId(data.backtest_id)
       if (data.live_strategy_id) setDeployedLiveId(data.live_strategy_id)
-      setMessages(prev => [...prev, assistantMsg])
 
-      // Refresh session list so the new session shows up in the sidebar
-      refreshSessions()
+      setMessages(prev => {
+        const updated = [...prev, assistantMsg]
+        const newCount = updated.filter(m => m.role !== 'assistant' || m.id !== 'welcome').length
+
+        // Persist session metadata to localStorage so it survives page refresh
+        const sessionMeta = {
+          session_id: sessionId,
+          preview: text.length > 55 ? text.slice(0, 55) + '…' : text,
+          updated_at: new Date().toISOString(),
+          message_count: newCount,
+        }
+        const updatedSessions = saveSessionToStorage(sessionMeta)
+        setSessions(updatedSessions)
+        setMessageCount(newCount)
+
+        return updated
+      })
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to reach the trading agent. Is the backend running?')
       console.error(err)
     } finally {
       setIsLoading(false)
     }
-  }, [isLoading, sessionId, parseAgentMetadata, refreshSessions])
+  }, [isLoading, sessionId, parseAgentMetadata])
 
   const clearChat = useCallback(() => {
     setMessages([WELCOME_MESSAGE])
     setSessionId(uuidv4())
+    setMessageCount(0)
     setLatestStrategyId(null)
     setLatestBacktestId(null)
     setDeployedLiveId(null)

@@ -113,14 +113,51 @@ class LiveStrategy(Base):
     is_active = Column(Boolean, default=True)
     started_at = Column(DateTime, default=datetime.utcnow)
     stopped_at = Column(DateTime, nullable=True)
+    last_signal = Column(Integer, nullable=True)          # -1 / 0 / 1
+    last_evaluated_at = Column(DateTime, nullable=True)
+    total_pnl = Column(Float, default=0.0)
+
+
+class LiveOrder(Base):
+    """Orders placed by live strategies."""
+    __tablename__ = "live_orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    live_strategy_id = Column(Integer, ForeignKey("live_strategies.id"))
+    kraken_order_id = Column(String)
+    ticker = Column(String)
+    side = Column(String)       # buy | sell
+    amount_usd = Column(Float)
+    volume = Column(Float)
+    price = Column(Float)
+    status = Column(String, default="filled")
+    sandbox = Column(Boolean, default=True)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
+
+async def _migrate(conn):
+    """Add columns that may be missing from pre-existing tables."""
+    from sqlalchemy import inspect, text
+    inspector = inspect(conn)
+
+    def safe_add(table, col, col_type):
+        existing = {c["name"] for c in inspector.get_columns(table)}
+        if col not in existing:
+            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}"))
+
+    if "live_strategies" in inspector.get_table_names():
+        safe_add("live_strategies", "last_signal", "INTEGER")
+        safe_add("live_strategies", "last_evaluated_at", "DATETIME")
+        safe_add("live_strategies", "total_pnl", "FLOAT DEFAULT 0.0")
 
 
 async def init_db():
-    """Create all tables."""
+    """Create all tables and run lightweight column migrations."""
     import os
     os.makedirs("./data", exist_ok=True)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(_migrate)
 
 
 async def get_db():
