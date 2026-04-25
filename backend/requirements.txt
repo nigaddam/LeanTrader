@@ -1,0 +1,32 @@
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+websockets==12.0
+
+# LangChain
+langchain==0.2.0
+langchain-anthropic==0.1.13
+langchain-core==0.2.0
+
+# Kraken
+krakenex==2.1.0
+pykrakenapi==0.3.1
+
+# Data / Finance
+yfinance==0.2.38
+pandas==2.2.2
+pandas_ta==0.3.14b
+numpy==1.26.4
+
+# Database
+sqlalchemy==2.0.30
+aiosqlite==0.20.0
+
+# Utilities
+python-dotenv==1.0.1
+httpx==0.27.0
+pydantic==2.7.1
+pydantic-settings==2.2.1
+
+# Dev / Testing
+pytest==8.2.0
+pytest-asyncio==0.23.6

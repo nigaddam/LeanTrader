@@ -1,0 +1,163 @@
+"""
+Backtesting engine.
+Fetches historical OHLCV data, runs strategy signals,
+simulates $100 portfolio, and returns chart data + metrics.
+"""
+import pandas as pd
+import numpy as np
+import yfinance as yf
+from datetime import datetime, timedelta
+from typing import Dict, Any
+
+
+TICKER_MAP = {
+    "BTC/USD": "BTC-USD",
+    "ETH/USD": "ETH-USD",
+    "SOL/USD": "SOL-USD",
+}
+
+
+def fetch_ohlcv(ticker: str, period: str = "5y") -> pd.DataFrame:
+    """Fetch historical OHLCV data from yfinance."""
+    yf_ticker = TICKER_MAP.get(ticker.upper(), ticker)
+    df = yf.download(yf_ticker, period=period, interval="1d", auto_adjust=True, progress=False)
+
+    if df.empty:
+        raise ValueError(f"No data returned for {ticker}")
+
+    df.columns = [c.lower() for c in df.columns]
+    df.index = pd.to_datetime(df.index)
+    df = df.dropna()
+    return df
+
+
+def simulate_portfolio(df: pd.DataFrame, initial_capital: float = 100.0) -> pd.DataFrame:
+    """
+    Simulate portfolio value based on signals.
+    Signal: 1 = buy (enter), -1 = sell (exit), 0 = hold
+    """
+    capital = initial_capital
+    position = 0.0       # BTC held
+    portfolio_values = []
+    trades = []
+
+    for i, (date, row) in enumerate(df.iterrows()):
+        price = row["close"]
+        signal = row.get("signal", 0)
+
+        # Execute signal
+        if signal == 1 and position == 0 and capital > 0:
+            # BUY
+            position = capital / price
+            capital = 0
+            trades.append({"date": str(date.date()), "action": "buy", "price": round(price, 2)})
+
+        elif signal == -1 and position > 0:
+            # SELL
+            capital = position * price
+            position = 0
+            trades.append({"date": str(date.date()), "action": "sell", "price": round(price, 2)})
+
+        # Portfolio value = cash + btc value
+        portfolio_value = capital + (position * price)
+        portfolio_values.append({
+            "date": str(date.date()),
+            "value": round(portfolio_value, 2),
+            "signal": int(signal),
+            "price": round(price, 2),
+        })
+
+    df["portfolio_value"] = [p["value"] for p in portfolio_values]
+    return df, portfolio_values, trades
+
+
+def calculate_metrics(portfolio_values: list, initial_capital: float) -> Dict[str, Any]:
+    """Calculate performance metrics from portfolio value series."""
+    values = [p["value"] for p in portfolio_values]
+
+    if not values or len(values) < 2:
+        return {}
+
+    final_value = values[-1]
+    total_return_pct = ((final_value - initial_capital) / initial_capital) * 100
+
+    # Daily returns
+    returns = pd.Series(values).pct_change().dropna()
+
+    # Sharpe Ratio (annualized, assuming 0% risk-free rate)
+    sharpe = (returns.mean() / returns.std()) * np.sqrt(252) if returns.std() > 0 else 0
+
+    # Max Drawdown
+    peak = pd.Series(values).cummax()
+    drawdown = (pd.Series(values) - peak) / peak
+    max_drawdown_pct = drawdown.min() * 100
+
+    return {
+        "initial_capital": round(initial_capital, 2),
+        "final_value": round(final_value, 2),
+        "total_return_pct": round(total_return_pct, 2),
+        "sharpe_ratio": round(sharpe, 3),
+        "max_drawdown_pct": round(max_drawdown_pct, 2),
+        "period_days": len(values),
+    }
+
+
+def run_backtest_for_strategy(
+    strategy_code: str,
+    ticker: str = "BTC/USD",
+    period: str = "5y",
+    initial_capital: float = 100.0
+) -> Dict[str, Any]:
+    """
+    Main backtesting function.
+    
+    Args:
+        strategy_code: Python code string containing a strategy class
+        ticker: Asset pair e.g. 'BTC/USD'
+        period: History period e.g. '5y', '2y', '1y'
+        initial_capital: Starting capital in USD
+    
+    Returns:
+        dict with 'metrics', 'chart_data', and 'trades'
+    """
+    # 1. Fetch data
+    df = fetch_ohlcv(ticker, period)
+
+    # 2. Execute the strategy code to get the class
+    namespace = {}
+    exec(strategy_code, namespace)
+
+    # Find the strategy class (first class defined in code)
+    strategy_class = None
+    for name, obj in namespace.items():
+        if isinstance(obj, type) and hasattr(obj, "generate_signals"):
+            strategy_class = obj
+            break
+
+    if strategy_class is None:
+        raise ValueError("No strategy class with generate_signals() found in generated code")
+
+    # 3. Instantiate and run
+    strategy = strategy_class()
+    df = strategy.generate_signals(df)
+
+    if "signal" not in df.columns:
+        raise ValueError("Strategy generate_signals() must return DataFrame with 'signal' column")
+
+    # 4. Simulate portfolio
+    df, portfolio_values, trades = simulate_portfolio(df, initial_capital)
+
+    # 5. Calculate metrics
+    metrics = calculate_metrics(portfolio_values, initial_capital)
+    metrics["num_trades"] = len(trades)
+    if trades:
+        buy_trades = [t for t in trades if t["action"] == "buy"]
+        sell_trades = [t for t in trades if t["action"] == "sell"]
+        metrics["num_buys"] = len(buy_trades)
+        metrics["num_sells"] = len(sell_trades)
+
+    return {
+        "metrics": metrics,
+        "chart_data": portfolio_values,
+        "trades": trades,
+    }
