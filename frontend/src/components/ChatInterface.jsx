@@ -9,7 +9,7 @@ const QUICK_PROMPTS = [
   "Run a backtest on my strategy",
 ]
 
-export default function ChatInterface({ messages, isLoading, error, onSend, onClear, latestStrategyId, latestBacktestId }) {
+export default function ChatInterface({ messages, isLoading, error, onSend, onClear, latestStrategyId, latestBacktestId, onAction }) {
   const [input, setInput] = useState('')
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
@@ -78,7 +78,7 @@ export default function ChatInterface({ messages, isLoading, error, onSend, onCl
       <div style={{ flex: 1, overflowY: 'auto', padding: '26px 28px' }}>
         <div style={{ maxWidth: 940, margin: '0 auto' }}>
           {messages.map(msg => (
-            <MessageBubble key={msg.id} message={msg} />
+            <MessageBubble key={msg.id} message={msg} onAction={onAction} />
           ))}
 
           {isLoading && (

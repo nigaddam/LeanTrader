@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
-import { Copy, Check } from 'lucide-react'
+import { BarChart2, Bookmark, Copy, Check, Rocket } from 'lucide-react'
 
 // Simple markdown-like renderer (bold, code blocks, line breaks)
 function renderContent(content) {
@@ -95,7 +95,45 @@ function CodeBlock({ lang, content }) {
   )
 }
 
-export default function MessageBubble({ message }) {
+function AssistantActions({ onAction }) {
+  if (!onAction) return null
+
+  const actions = [
+    { id: 'backtest', label: 'Run Backtest', icon: BarChart2 },
+    { id: 'model', label: 'Save as Model', icon: Bookmark },
+    { id: 'live', label: 'Deploy Live', icon: Rocket },
+  ]
+
+  return (
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+      {actions.map(({ id, label, icon: Icon }) => (
+        <button
+          key={id}
+          onClick={() => onAction(id)}
+          style={{
+            height: 28,
+            padding: '0 9px',
+            borderRadius: 7,
+            border: '1px solid #d8e1eb',
+            background: '#fbfcfe',
+            color: id === 'live' ? '#4f46e5' : '#475569',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            fontSize: 11,
+            fontWeight: 700,
+            cursor: 'pointer',
+          }}
+        >
+          <Icon size={12} />
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+export default function MessageBubble({ message, onAction }) {
   const isUser = message.role === 'user'
   const parts = renderContent(message.content)
 
@@ -136,6 +174,7 @@ export default function MessageBubble({ message }) {
             ? <CodeBlock key={i} lang={part.lang} content={part.content} />
             : <TextBlock key={i} content={part.content} />
         )}
+        {!isUser && message.id !== 'welcome' && <AssistantActions onAction={onAction} />}
         <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 6, textAlign: isUser ? 'right' : 'left' }}>
           {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </div>

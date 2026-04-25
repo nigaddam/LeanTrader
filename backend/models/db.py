@@ -135,7 +135,7 @@ class LiveOrder(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
 
 
-async def _migrate(conn):
+def _migrate(conn):
     """Add columns that may be missing from pre-existing tables."""
     from sqlalchemy import inspect, text
     inspector = inspect(conn)

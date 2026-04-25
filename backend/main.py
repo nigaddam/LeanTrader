@@ -11,6 +11,7 @@ from api.chat import router as chat_router
 from api.strategy import router as strategy_router
 from api.backtest import router as backtest_router
 from api.trading import router as trading_router
+from api.market import router as market_router
 from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env", override=True)
@@ -22,18 +23,8 @@ async def lifespan(app: FastAPI):
     await init_db()
     print("✅ Database initialized")
 
-    # Resume any live strategies that were active before last shutdown
-    from trading.live_runner import start as runner_start
-    from models.db import async_session, LiveStrategy
-    from sqlalchemy import select
-    async with async_session() as db:
-        result = await db.execute(
-            select(LiveStrategy).where(LiveStrategy.is_active == True)  # noqa: E712
-        )
-        active = result.scalars().all()
-        for live in active:
-            runner_start(live.id, live.strategy_id, live.ticker, live.amount_usd)
-            print(f"▶  Resumed live strategy #{live.id} ({live.ticker})")
+    # Live trading is paper-only in the current MVP UI, so do not auto-resume
+    # background runners on startup.
 
     yield
 
@@ -63,6 +54,7 @@ app.include_router(chat_router, prefix="/api")
 app.include_router(strategy_router, prefix="/api")
 app.include_router(backtest_router, prefix="/api")
 app.include_router(trading_router, prefix="/api")
+app.include_router(market_router, prefix="/api")
 
 
 @app.get("/health")

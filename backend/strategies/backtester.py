@@ -8,6 +8,9 @@ import numpy as np
 import yfinance as yf
 from datetime import datetime, timedelta
 from typing import Dict, Any
+import json
+from urllib.parse import urlencode
+from urllib.request import urlopen
 
 
 TICKER_MAP = {
@@ -20,6 +23,12 @@ KRAKEN_PAIR_MAP = {
     "BTC/USD": "XXBTZUSD",
     "ETH/USD": "XETHZUSD",
     "SOL/USD": "SOLUSD",
+}
+
+COINGECKO_ID_MAP = {
+    "BTC/USD": "bitcoin",
+    "ETH/USD": "ethereum",
+    "SOL/USD": "solana",
 }
 
 
@@ -81,6 +90,45 @@ def fetch_ohlcv_from_kraken(ticker: str, period: str = "5y") -> pd.DataFrame:
     return df
 
 
+def fetch_ohlcv_from_coingecko(ticker: str, period: str = "3y") -> pd.DataFrame:
+    """Fetch daily close/volume data from CoinGecko as a public fallback."""
+    coin_id = COINGECKO_ID_MAP.get(ticker.upper())
+    if not coin_id:
+        raise ValueError(f"CoinGecko does not support {ticker}")
+
+    params = urlencode({
+        "vs_currency": "usd",
+        "days": _period_to_days(period),
+        "interval": "daily",
+    })
+    url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart?{params}"
+
+    with urlopen(url, timeout=15) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+
+    prices = payload.get("prices", [])
+    volumes = payload.get("total_volumes", [])
+    if not prices:
+        raise ValueError(f"No CoinGecko data returned for {ticker}")
+
+    volume_by_ts = {int(ts): volume for ts, volume in volumes}
+    rows = []
+    for ts, price in prices:
+        date = pd.to_datetime(ts, unit="ms").normalize()
+        rows.append({
+            "date": date,
+            "open": float(price),
+            "high": float(price),
+            "low": float(price),
+            "close": float(price),
+            "volume": float(volume_by_ts.get(int(ts), 0)),
+        })
+
+    df = pd.DataFrame(rows).set_index("date")
+    df = df[~df.index.duplicated(keep="last")].sort_index().dropna()
+    return df
+
+
 def fetch_ohlcv(ticker: str, period: str = "5y") -> pd.DataFrame:
     """Fetch historical OHLCV data from yfinance, falling back to Kraken."""
     yf_ticker = TICKER_MAP.get(ticker.upper(), ticker)
@@ -90,7 +138,10 @@ def fetch_ohlcv(ticker: str, period: str = "5y") -> pd.DataFrame:
         df = pd.DataFrame()
 
     if df.empty:
-        df = fetch_ohlcv_from_kraken(ticker, period)
+        try:
+            df = fetch_ohlcv_from_coingecko(ticker, period)
+        except Exception:
+            df = fetch_ohlcv_from_kraken(ticker, period)
         if df.empty:
             raise ValueError(f"No data returned for {ticker}")
         return df

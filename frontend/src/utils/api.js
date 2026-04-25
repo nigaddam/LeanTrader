@@ -57,6 +57,11 @@ export const listBacktests = async () => {
   return res.data
 }
 
+export const getAssetHistory = async (ticker, period = '3y') => {
+  const res = await api.get('/api/assets/history', { params: { ticker, period } })
+  return res.data
+}
+
 export const deployStrategy = async (strategyId, ticker = 'BTC/USD', amountUsd = 100) => {
   const res = await api.post('/api/deploy', {
     strategy_id: strategyId,

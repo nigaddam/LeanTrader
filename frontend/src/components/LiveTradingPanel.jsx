@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Zap, Square, TrendingUp, TrendingDown, Minus, RefreshCw, AlertTriangle } from 'lucide-react'
+import { Zap, Square, TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react'
 
 const TICKERS = ['BTC/USD', 'ETH/USD', 'SOL/USD']
 
@@ -48,10 +48,15 @@ function ModeBadge({ mode }) {
   )
 }
 
-function DeployForm({ models, onDeploy, loading }) {
-  const [strategyId, setStrategyId] = useState('')
-  const [ticker, setTicker] = useState('BTC/USD')
+function DeployForm({ models, activeContext, onDeploy, loading }) {
+  const [strategyId, setStrategyId] = useState(activeContext?.strategy?.id || '')
+  const [ticker, setTicker] = useState(activeContext?.asset || 'BTC/USD')
   const [amount, setAmount] = useState('100')
+
+  useEffect(() => {
+    if (activeContext?.strategy?.id) setStrategyId(activeContext.strategy.id)
+    if (activeContext?.asset) setTicker(activeContext.asset)
+  }, [activeContext?.strategy?.id, activeContext?.asset])
 
   const handleDeploy = () => {
     if (!strategyId) return
@@ -82,7 +87,7 @@ function DeployForm({ models, onDeploy, loading }) {
           </select>
         </div>
         <div>
-          <label style={labelStyle}>Ticker</label>
+          <label style={labelStyle}>Asset</label>
           <select value={ticker} onChange={e => setTicker(e.target.value)} style={inputStyle}>
             {TICKERS.map(t => <option key={t}>{t}</option>)}
           </select>
@@ -110,7 +115,7 @@ function DeployForm({ models, onDeploy, loading }) {
         }}
       >
         <Zap size={14} />
-        {loading ? 'Deploying…' : 'Go Live'}
+        {loading ? 'Starting…' : 'Go Live (Paper)'}
       </button>
     </div>
   )
@@ -151,7 +156,7 @@ function OrdersTable({ orders }) {
   )
 }
 
-export default function LiveTradingPanel({ selectedLive, models, loading, error, onDeploy, onStop, onRefresh }) {
+export default function LiveTradingPanel({ selectedLive, models, activeContext, loading, error, onDeploy, onStop, onRefresh }) {
   const [countdown, setCountdown] = useState(null)
 
   // Countdown to next evaluation
@@ -203,15 +208,7 @@ export default function LiveTradingPanel({ selectedLive, models, loading, error,
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
-        {error && (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: '#dc2626', fontSize: 13 }}>
-            <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-            {error}
-          </div>
-        )}
-
-        {/* Deploy form — always visible so user can add more */}
-        <DeployForm models={models} onDeploy={onDeploy} loading={loading} />
+        <DeployForm models={models} activeContext={activeContext} onDeploy={onDeploy} loading={loading} />
 
         {/* Selected live strategy detail */}
         {selectedLive ? (
@@ -264,7 +261,8 @@ export default function LiveTradingPanel({ selectedLive, models, loading, error,
         ) : (
           <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
             <Zap size={32} style={{ opacity: 0.3, marginBottom: 12 }} />
-            <div style={{ fontSize: 14 }}>Select a live strategy from the list,<br />or deploy a new one above.</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: '#263647', marginBottom: 6 }}>No live strategies yet.</div>
+            <div style={{ fontSize: 13 }}>Select a model to deploy.</div>
           </div>
         )}
       </div>

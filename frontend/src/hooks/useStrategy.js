@@ -14,6 +14,7 @@ export function useStrategy() {
       setStrategy(data)
       const codeData = await getStrategyCode(id)
       setCode(codeData)
+      return data
     } catch (e) {
       console.error('Failed to fetch strategy', e)
     } finally {
@@ -54,12 +55,12 @@ export function useBacktest() {
     }
   }, [refreshBacktests])
 
-  const triggerBacktest = useCallback(async (strategyId) => {
+  const triggerBacktest = useCallback(async (strategyId, ticker = 'BTC/USD') => {
     if (!strategyId) return
     setLoading(true)
     setError(null)
     try {
-      const data = await runBacktest(strategyId)
+      const data = await runBacktest(strategyId, ticker)
       setBacktestData(data)
       refreshBacktests()
       return data
@@ -112,6 +113,7 @@ export function useModels() {
       selectedModelIdRef.current = id
       setSelectedModel(model)
       setSelectedCode(code)
+      return model
     } catch (e) {
       setError('Failed to load model code')
       console.error(e)
