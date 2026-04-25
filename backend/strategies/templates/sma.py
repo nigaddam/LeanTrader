@@ -4,7 +4,6 @@ Buys when short MA crosses above long MA (golden cross).
 Sells when short MA crosses below long MA (death cross).
 """
 import pandas as pd
-import pandas_ta as ta
 
 
 class SMAStrategy:
@@ -27,8 +26,8 @@ class SMAStrategy:
     def generate_signals(self, df: pd.DataFrame) -> pd.DataFrame:
         df = df.copy()
 
-        df["sma_short"] = ta.sma(df["close"], length=self.short_period)
-        df["sma_long"] = ta.sma(df["close"], length=self.long_period)
+        df["sma_short"] = df["close"].rolling(window=self.short_period).mean()
+        df["sma_long"] = df["close"].rolling(window=self.long_period).mean()
 
         df["signal"] = 0
 

@@ -1,21 +1,22 @@
 """
 LangChain agent setup for LeanTrade.
-Uses Claude as the LLM with tool-calling for trading actions.
+Uses OpenAI as the LLM with tool-calling for trading actions.
 """
-from langchain_anthropic import ChatAnthropic
+from langchain_openai import ChatOpenAI
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage
 from agent.tools import ALL_TOOLS
 from agent.prompts import SYSTEM_PROMPT
+import json
 import os
 
 
 def build_agent() -> AgentExecutor:
     """Build and return the LangChain agent executor."""
-    llm = ChatAnthropic(
-        model="claude-sonnet-4-20250514",
-        api_key=os.getenv("ANTHROPIC_API_KEY"),
+    llm = ChatOpenAI(
+        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        api_key=os.getenv("OPENAI_API_KEY"),
         temperature=0.3,
         max_tokens=2000,
     )
@@ -35,9 +36,30 @@ def build_agent() -> AgentExecutor:
         verbose=True,
         max_iterations=5,
         handle_parsing_errors=True,
+        return_intermediate_steps=True,
     )
 
     return executor
+
+
+def extract_metadata(result: dict) -> dict:
+    """Pull IDs returned by tools out of LangChain intermediate steps."""
+    metadata = {}
+    for _, observation in result.get("intermediate_steps", []):
+        if not isinstance(observation, str):
+            continue
+        try:
+            data = json.loads(observation)
+        except json.JSONDecodeError:
+            continue
+
+        if data.get("strategy_id"):
+            metadata["strategy_id"] = data["strategy_id"]
+        if data.get("backtest_id"):
+            metadata["backtest_id"] = data["backtest_id"]
+        if data.get("live_strategy_id"):
+            metadata["live_strategy_id"] = data["live_strategy_id"]
+    return metadata
 
 
 def format_history(messages: list) -> list:
@@ -51,10 +73,10 @@ def format_history(messages: list) -> list:
     return history
 
 
-async def run_agent(user_message: str, conversation_history: list) -> str:
+async def run_agent(user_message: str, conversation_history: list) -> dict:
     """
     Run the agent with a user message and conversation history.
-    Returns the agent's response as a string.
+    Returns the agent response plus structured tool metadata.
     """
     executor = build_agent()
     chat_history = format_history(conversation_history)
@@ -69,4 +91,7 @@ async def run_agent(user_message: str, conversation_history: list) -> str:
         "chat_history": chat_history,
     })
 
-    return result.get("output", "I encountered an error processing your request.")
+    return {
+        "response": result.get("output", "I encountered an error processing your request."),
+        **extract_metadata(result),
+    }

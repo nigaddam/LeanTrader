@@ -2,6 +2,7 @@
 LeanTrade FastAPI application entry point.
 """
 import os
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -12,7 +13,7 @@ from api.backtest import router as backtest_router
 from api.trading import router as trading_router
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(Path(__file__).resolve().parent.parent / ".env", override=True)
 
 
 @asynccontextmanager

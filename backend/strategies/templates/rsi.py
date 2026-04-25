@@ -4,7 +4,6 @@ Buys when RSI crosses below oversold threshold (default 30).
 Sells when RSI crosses above overbought threshold (default 70).
 """
 import pandas as pd
-import pandas_ta as ta
 
 
 class RSIStrategy:
@@ -37,8 +36,14 @@ class RSIStrategy:
         """
         df = df.copy()
 
-        # Calculate RSI
-        df["rsi"] = ta.rsi(df["close"], length=self.rsi_period)
+        # Calculate RSI using Wilder-style rolling averages.
+        delta = df["close"].diff()
+        gain = delta.clip(lower=0)
+        loss = -delta.clip(upper=0)
+        avg_gain = gain.rolling(window=self.rsi_period).mean()
+        avg_loss = loss.rolling(window=self.rsi_period).mean()
+        rs = avg_gain / avg_loss.replace(0, pd.NA)
+        df["rsi"] = 100 - (100 / (1 + rs))
 
         df["signal"] = 0
 

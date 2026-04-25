@@ -7,7 +7,6 @@ const QUICK_PROMPTS = [
   "Suggest a simple strategy for BTC",
   "Let's use RSI with period 14",
   "Run a backtest on my strategy",
-  "Go live on Kraken",
 ]
 
 export default function ChatInterface({ messages, isLoading, error, onSend, onClear, latestStrategyId, latestBacktestId }) {
@@ -33,29 +32,29 @@ export default function ChatInterface({ messages, isLoading, error, onSend, onCl
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#0a0f1e' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#ffffff' }}>
 
       {/* Header */}
       <div style={{
-        padding: '14px 20px',
-        borderBottom: '1px solid #1e2d45',
+        padding: '14px 28px',
+        borderBottom: '1px solid #e5eaf1',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        background: '#0d1526',
+        background: '#ffffff',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div className="pulse-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: '#00ff88' }} />
-          <span style={{ fontFamily: 'JetBrains Mono', fontSize: 13, color: '#00ff88', fontWeight: 600 }}>
-            LEANTRADE AGENT
+          <div className="pulse-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: '#4f46e5' }} />
+          <span style={{ fontFamily: 'JetBrains Mono', fontSize: 13, color: '#4f46e5', fontWeight: 700 }}>
+            Research Agent
           </span>
-          <span style={{ fontSize: 11, color: '#4b5563', background: '#161d2f', padding: '2px 8px', borderRadius: 4, border: '1px solid #1e2d45' }}>
-            Claude Sonnet
+          <span style={{ fontSize: 11, color: '#64748b', background: '#f7f9fc', padding: '3px 9px', borderRadius: 999, border: '1px solid #e5eaf1' }}>
+            OpenAI
           </span>
         </div>
         <button
           onClick={onClear}
-          style={{ background: 'none', border: 'none', color: '#4b5563', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}
+          style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}
           title="Clear conversation"
         >
           <Trash2 size={14} /> New Chat
@@ -65,9 +64,9 @@ export default function ChatInterface({ messages, isLoading, error, onSend, onCl
       {/* Status bar - shows active strategy/backtest */}
       {(latestStrategyId || latestBacktestId) && (
         <div style={{
-          padding: '6px 20px', background: 'rgba(0,255,136,0.05)',
-          borderBottom: '1px solid rgba(0,255,136,0.1)',
-          display: 'flex', gap: 16, fontSize: 11, color: '#00ff88',
+          padding: '6px 28px', background: '#f7f9fc',
+          borderBottom: '1px solid #e5eaf1',
+          display: 'flex', gap: 16, fontSize: 11, color: '#4f46e5',
           fontFamily: 'JetBrains Mono',
         }}>
           {latestStrategyId && <span>strategy #{latestStrategyId} active</span>}
@@ -76,26 +75,27 @@ export default function ChatInterface({ messages, isLoading, error, onSend, onCl
       )}
 
       {/* Messages */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
-        {messages.map(msg => (
-          <MessageBubble key={msg.id} message={msg} />
-        ))}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '26px 28px' }}>
+        <div style={{ maxWidth: 940, margin: '0 auto' }}>
+          {messages.map(msg => (
+            <MessageBubble key={msg.id} message={msg} />
+          ))}
 
-        {isLoading && (
+          {isLoading && (
           <div className="fade-in-up" style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 16 }}>
             <div style={{
               width: 32, height: 32, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #00ff88, #00cc6a)',
+              background: '#6ee787',
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14,
             }}>🤖</div>
             <div style={{
-              background: '#161d2f', border: '1px solid #1e2d45',
-              borderRadius: '4px 18px 18px 18px', padding: '14px 18px',
+          background: '#f7f9fc', border: '1px solid #e5eaf1',
+              borderRadius: 14, padding: '14px 18px',
               display: 'flex', gap: 6, alignItems: 'center',
             }}>
               {[0, 1, 2].map(i => (
                 <div key={i} style={{
-                  width: 7, height: 7, borderRadius: '50%', background: '#00ff88',
+                  width: 7, height: 7, borderRadius: '50%', background: '#4f46e5',
                   animation: `pulse 1.2s ${i * 0.2}s infinite`,
                 }} />
               ))}
@@ -113,14 +113,15 @@ export default function ChatInterface({ messages, isLoading, error, onSend, onCl
           </div>
         )}
 
-        <div ref={bottomRef} />
+          <div ref={bottomRef} />
+        </div>
       </div>
 
       {/* Quick Prompts */}
       <div style={{
-        padding: '8px 20px', borderTop: '1px solid #1e2d45',
+        padding: '8px 28px', borderTop: '1px solid #e5eaf1',
         display: 'flex', gap: 8, overflowX: 'auto', flexShrink: 0,
-        background: '#0d1526',
+        background: '#ffffff',
       }}>
         {QUICK_PROMPTS.map((p, i) => (
           <button
@@ -129,13 +130,13 @@ export default function ChatInterface({ messages, isLoading, error, onSend, onCl
             disabled={isLoading}
             style={{
               whiteSpace: 'nowrap', fontSize: 11, padding: '4px 12px',
-              background: '#161d2f', border: '1px solid #1e2d45',
-              borderRadius: 20, color: '#94a3b8', cursor: 'pointer',
+              background: '#ffffff', border: '1px solid #d8e1eb',
+              borderRadius: 999, color: '#64748b', cursor: 'pointer',
               fontFamily: 'DM Sans', transition: 'all 0.2s',
               flexShrink: 0,
             }}
-            onMouseEnter={e => { e.target.style.borderColor = '#00ff88'; e.target.style.color = '#00ff88' }}
-            onMouseLeave={e => { e.target.style.borderColor = '#1e2d45'; e.target.style.color = '#94a3b8' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#4f46e5'; e.currentTarget.style.color = '#4f46e5' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = '#d8e1eb'; e.currentTarget.style.color = '#64748b' }}
           >
             <Zap size={10} style={{ display: 'inline', marginRight: 4 }} />
             {p}
@@ -145,44 +146,46 @@ export default function ChatInterface({ messages, isLoading, error, onSend, onCl
 
       {/* Input */}
       <div style={{
-        padding: '16px 20px', borderTop: '1px solid #1e2d45',
-        background: '#0d1526', display: 'flex', gap: 12, alignItems: 'flex-end',
+        padding: '16px 28px', borderTop: '1px solid #e5eaf1',
+        background: '#ffffff', display: 'flex', gap: 12, alignItems: 'flex-end',
       }}>
-        <textarea
-          ref={inputRef}
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={handleKey}
-          placeholder="Ask about BTC, describe a strategy, request a backtest..."
-          rows={1}
-          style={{
-            flex: 1, resize: 'none', background: '#161d2f',
-            border: '1px solid #1e2d45', borderRadius: 12,
-            color: '#e2e8f0', padding: '12px 16px', fontSize: 14,
-            fontFamily: 'DM Sans', outline: 'none',
-            transition: 'border-color 0.2s',
-            lineHeight: 1.5, maxHeight: 120, overflowY: 'auto',
-          }}
-          onFocus={e => e.target.style.borderColor = '#00ff88'}
-          onBlur={e => e.target.style.borderColor = '#1e2d45'}
-          disabled={isLoading}
-        />
-        <button
-          onClick={handleSend}
-          disabled={!input.trim() || isLoading}
-          style={{
-            width: 44, height: 44, borderRadius: 12, border: 'none', cursor: 'pointer',
-            background: input.trim() && !isLoading ? 'linear-gradient(135deg, #00ff88, #00cc6a)' : '#1e2d45',
-            color: input.trim() && !isLoading ? '#0a0f1e' : '#4b5563',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'all 0.2s', flexShrink: 0,
-          }}
-        >
-          <Send size={18} />
-        </button>
+        <div style={{ maxWidth: 940, margin: '0 auto', width: '100%', display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleKey}
+            placeholder="Ask about BTC, describe a strategy, request a backtest..."
+            rows={1}
+            style={{
+              flex: 1, resize: 'none', background: '#ffffff',
+              border: '2px solid #c4d1df', borderRadius: 0,
+              color: '#263647', padding: '18px 20px', fontSize: 15,
+              fontFamily: 'DM Sans', outline: 'none',
+              transition: 'border-color 0.2s, box-shadow 0.2s',
+              lineHeight: 1.5, maxHeight: 120, overflowY: 'auto',
+            }}
+            onFocus={e => { e.target.style.borderColor = '#6d5dfc'; e.target.style.boxShadow = '0 0 0 3px rgba(109,93,252,0.08)' }}
+            onBlur={e => { e.target.style.borderColor = '#c4d1df'; e.target.style.boxShadow = 'none' }}
+            disabled={isLoading}
+          />
+          <button
+            onClick={handleSend}
+            disabled={!input.trim() || isLoading}
+            style={{
+              width: 56, height: 56, borderRadius: 0, border: 'none', cursor: 'pointer',
+              background: input.trim() && !isLoading ? '#6d5dfc' : '#d8e1eb',
+              color: input.trim() && !isLoading ? '#ffffff' : '#64748b',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.2s', flexShrink: 0,
+            }}
+          >
+            <Send size={18} />
+          </button>
+        </div>
       </div>
 
-      <div style={{ padding: '6px 20px 10px', textAlign: 'center', fontSize: 10, color: '#2d3748' }}>
+      <div style={{ padding: '6px 20px 10px', textAlign: 'center', fontSize: 10, color: '#94a3b8' }}>
         Not financial advice. Trading involves risk. Always test in sandbox mode first.
       </div>
     </div>

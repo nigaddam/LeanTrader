@@ -35,4 +35,14 @@ async def get_strategy_code(strategy_id: int, db: AsyncSession = Depends(get_db)
 async def list_strategies(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Strategy).order_by(Strategy.created_at.desc()).limit(20))
     strategies = result.scalars().all()
-    return [{"id": s.id, "name": s.name, "type": s.type, "created_at": s.created_at} for s in strategies]
+    return [
+        {
+            "id": s.id,
+            "name": s.name,
+            "type": s.type,
+            "parameters": s.get_parameters(),
+            "description": s.description,
+            "created_at": s.created_at,
+        }
+        for s in strategies
+    ]

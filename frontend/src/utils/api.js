@@ -12,6 +12,11 @@ export const sendMessage = async (message, sessionId) => {
   return res.data
 }
 
+export const listConversations = async () => {
+  const res = await api.get('/api/conversations')
+  return res.data
+}
+
 export const getConversation = async (sessionId) => {
   const res = await api.get(`/api/conversations/${sessionId}`)
   return res.data
@@ -27,6 +32,11 @@ export const getStrategyCode = async (strategyId) => {
   return res.data
 }
 
+export const listStrategies = async () => {
+  const res = await api.get('/api/strategies')
+  return res.data
+}
+
 export const runBacktest = async (strategyId, ticker = 'BTC/USD', period = '5y') => {
   const res = await api.post('/api/backtest', {
     strategy_id: strategyId,
@@ -39,6 +49,11 @@ export const runBacktest = async (strategyId, ticker = 'BTC/USD', period = '5y')
 
 export const getBacktest = async (backtestId) => {
   const res = await api.get(`/api/backtest/${backtestId}`)
+  return res.data
+}
+
+export const listBacktests = async () => {
+  const res = await api.get('/api/backtests')
   return res.data
 }
 

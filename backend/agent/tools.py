@@ -5,7 +5,6 @@ Each tool corresponds to a concrete action the agent can take.
 import json
 import os
 from langchain.tools import tool
-from langchain_anthropic import ChatAnthropic
 
 
 # ─────────────────────────────────────────────
@@ -86,7 +85,7 @@ def generate_strategy(description: str, strategy_type: str = "rsi", parameters: 
     parameters should be a JSON string like '{"period": 14, "overbought": 70, "oversold": 30}'
     Returns the strategy ID and Python code.
     """
-    from anthropic import Anthropic
+    from openai import OpenAI
     from agent.prompts import STRATEGY_GENERATION_PROMPT
 
     params = json.loads(parameters) if isinstance(parameters, str) else parameters
@@ -96,14 +95,18 @@ def generate_strategy(description: str, strategy_type: str = "rsi", parameters: 
         parameters=json.dumps(params)
     )
 
-    client = Anthropic()
-    response = client.messages.create(
-        model="claude-sonnet-4-20250514",
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    response = client.chat.completions.create(
+        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        temperature=0.2,
         max_tokens=2000,
-        messages=[{"role": "user", "content": prompt}]
+        messages=[
+            {"role": "system", "content": "You generate only complete, runnable Python trading strategy classes."},
+            {"role": "user", "content": prompt},
+        ],
     )
 
-    code = response.content[0].text.strip()
+    code = response.choices[0].message.content.strip()
     # Strip markdown fences if present
     if code.startswith("```"):
         code = code.split("```")[1]
@@ -192,7 +195,7 @@ def run_backtest(strategy_id: int, ticker: str = "BTC/USD", period: str = "5y") 
                     initial_capital=100.0,
                     final_value=results["metrics"]["final_value"],
                     metrics=json.dumps(results["metrics"]),
-                    chart_data=json.dumps(results["chart_data"][:100]),  # limit size
+                    chart_data=json.dumps(results["chart_data"]),
                 )
                 db.add(bt)
                 await db.commit()
@@ -312,6 +315,5 @@ ALL_TOOLS = [
     get_market_data,
     generate_strategy,
     run_backtest,
-    deploy_to_kraken,
     get_kraken_positions,
 ]

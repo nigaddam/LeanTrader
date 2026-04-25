@@ -16,14 +16,84 @@ TICKER_MAP = {
     "SOL/USD": "SOL-USD",
 }
 
+KRAKEN_PAIR_MAP = {
+    "BTC/USD": "XXBTZUSD",
+    "ETH/USD": "XETHZUSD",
+    "SOL/USD": "SOLUSD",
+}
+
+
+def _period_to_days(period: str) -> int:
+    """Convert simple yfinance-style periods into days."""
+    period = (period or "5y").lower().strip()
+    if period.endswith("y"):
+        return int(period[:-1] or 1) * 365
+    if period.endswith("mo"):
+        return int(period[:-2] or 1) * 30
+    if period.endswith("d"):
+        return int(period[:-1] or 1)
+    return 365
+
+
+def fetch_ohlcv_from_kraken(ticker: str, period: str = "5y") -> pd.DataFrame:
+    """Fetch daily OHLCV data from Kraken public API as a yfinance fallback."""
+    import krakenex
+
+    pair = KRAKEN_PAIR_MAP.get(ticker.upper(), ticker.replace("/", ""))
+    since = int((datetime.utcnow() - timedelta(days=_period_to_days(period))).timestamp())
+    rows = []
+    last_seen = None
+
+    api = krakenex.API()
+    for _ in range(10):
+        resp = api.query_public("OHLC", {"pair": pair, "interval": 1440, "since": since})
+        if resp.get("error"):
+            raise ValueError(f"Kraken OHLC error for {ticker}: {resp['error']}")
+
+        result = resp.get("result", {})
+        raw_rows = next((value for key, value in result.items() if key != "last"), [])
+        if not raw_rows:
+            break
+
+        new_rows = [row for row in raw_rows if row[0] != last_seen]
+        rows.extend(new_rows)
+
+        last_seen = raw_rows[-1][0]
+        next_since = int(result.get("last", last_seen))
+        if next_since <= since:
+            break
+        since = next_since
+
+        if len(raw_rows) < 720:
+            break
+
+    if not rows:
+        raise ValueError(f"No data returned for {ticker}")
+
+    df = pd.DataFrame(
+        rows,
+        columns=["timestamp", "open", "high", "low", "close", "vwap", "volume", "count"],
+    )
+    df["date"] = pd.to_datetime(df["timestamp"], unit="s")
+    df = df.set_index("date")
+    df = df[["open", "high", "low", "close", "volume"]].astype(float)
+    df = df[~df.index.duplicated(keep="last")].sort_index().dropna()
+    return df
+
 
 def fetch_ohlcv(ticker: str, period: str = "5y") -> pd.DataFrame:
-    """Fetch historical OHLCV data from yfinance."""
+    """Fetch historical OHLCV data from yfinance, falling back to Kraken."""
     yf_ticker = TICKER_MAP.get(ticker.upper(), ticker)
-    df = yf.download(yf_ticker, period=period, interval="1d", auto_adjust=True, progress=False)
+    try:
+        df = yf.download(yf_ticker, period=period, interval="1d", auto_adjust=True, progress=False)
+    except Exception:
+        df = pd.DataFrame()
 
     if df.empty:
-        raise ValueError(f"No data returned for {ticker}")
+        df = fetch_ohlcv_from_kraken(ticker, period)
+        if df.empty:
+            raise ValueError(f"No data returned for {ticker}")
+        return df
 
     df.columns = [c.lower() for c in df.columns]
     df.index = pd.to_datetime(df.index)
@@ -124,7 +194,7 @@ def run_backtest_for_strategy(
     df = fetch_ohlcv(ticker, period)
 
     # 2. Execute the strategy code to get the class
-    namespace = {}
+    namespace = {"pd": pd, "np": np}
     exec(strategy_code, namespace)
 
     # Find the strategy class (first class defined in code)

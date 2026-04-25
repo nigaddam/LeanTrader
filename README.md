@@ -149,7 +149,7 @@ leantrade/
 | Node.js | 18+ | Frontend build |
 | Docker | 24+ | Optional, for containerized run |
 | Kraken Account | — | Get API keys at kraken.com |
-| Anthropic API Key | — | For Claude agent |
+| OpenAI API Key | — | For the OpenAI-powered agent |
 
 ---
 
@@ -195,7 +195,8 @@ Copy `.env.example` to `.env` and fill in:
 
 ```bash
 # Required
-ANTHROPIC_API_KEY=sk-ant-...          # Claude API key
+OPENAI_API_KEY=sk-...                 # OpenAI API key
+OPENAI_MODEL=gpt-4o-mini              # OpenAI chat model
 
 # Kraken (use sandbox keys for testing)
 KRAKEN_API_KEY=your_kraken_key
@@ -486,7 +487,7 @@ class MyStrategy:
 
 | Problem | Fix |
 |---------|-----|
-| `ANTHROPIC_API_KEY not found` | Check `.env` file is in project root and properly formatted |
+| `OPENAI_API_KEY not found` | Check `.env` file is in project root and properly formatted |
 | Kraken API 403 errors | Verify API key permissions include "Trade" scope |
 | Backtest returns no data | yfinance may rate-limit; add `time.sleep(1)` between fetches |
 | Frontend can't connect to backend | Check `VITE_API_URL` in frontend `.env` matches backend port |
@@ -511,4 +512,4 @@ class MyStrategy:
 
 ---
 
-*Built with Claude AI · FastAPI · LangChain · React · Kraken*
+*Built with OpenAI · FastAPI · LangChain · React · Kraken*

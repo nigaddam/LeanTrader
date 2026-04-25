@@ -112,41 +112,42 @@ export default function MessageBubble({ message }) {
     >
       {!isUser && (
         <div style={{
-          width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #00ff88, #00cc6a)',
+          width: 30, height: 30, borderRadius: '50%', background: '#eef2ff',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 14, flexShrink: 0, marginTop: 2,
+          fontSize: 13, flexShrink: 0, marginTop: 2, color: '#4f46e5', fontWeight: 800,
         }}>
-          🤖
+          AI
         </div>
       )}
 
       <div style={{
-        maxWidth: isUser ? '70%' : '85%',
-        background: isUser ? 'linear-gradient(135deg, #00cc6a, #009955)' : '#161d2f',
-        border: isUser ? 'none' : '1px solid #1e2d45',
-        borderRadius: isUser ? '18px 18px 4px 18px' : '4px 18px 18px 18px',
-        padding: '12px 16px',
-        color: isUser ? '#0a0f1e' : '#e2e8f0',
+        maxWidth: isUser ? '72%' : '86%',
+        background: isUser ? '#f1f5f9' : '#ffffff',
+        border: isUser ? '1px solid #e5eaf1' : '1px solid #e5eaf1',
+        borderRadius: 16,
+        padding: '13px 16px',
+        color: '#263647',
         fontSize: 14,
         fontWeight: isUser ? 600 : 400,
+        boxShadow: '0 10px 26px rgba(15,23,42,0.06)',
       }}>
         {parts.map((part, i) =>
           part.type === 'code'
             ? <CodeBlock key={i} lang={part.lang} content={part.content} />
             : <TextBlock key={i} content={part.content} />
         )}
-        <div style={{ fontSize: 10, color: isUser ? 'rgba(0,0,0,0.4)' : '#4b5563', marginTop: 6, textAlign: isUser ? 'right' : 'left' }}>
+        <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 6, textAlign: isUser ? 'right' : 'left' }}>
           {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </div>
       </div>
 
       {isUser && (
         <div style={{
-          width: 32, height: 32, borderRadius: '50%', background: '#1e2d45',
+          width: 30, height: 30, borderRadius: '50%', background: '#f1f5f9',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 14, flexShrink: 0, marginTop: 2,
+          fontSize: 12, flexShrink: 0, marginTop: 2, color: '#64748b', fontWeight: 800,
         }}>
-          👤
+          YOU
         </div>
       )}
     </div>

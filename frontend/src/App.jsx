@@ -1,143 +1,126 @@
 import React, { useState, useEffect } from 'react'
-import { TrendingUp, BarChart2, Activity } from 'lucide-react'
+import { TrendingUp } from 'lucide-react'
 import ChatInterface from './components/ChatInterface'
-import StrategyPanel from './components/StrategyPanel'
 import BacktestChart from './components/BacktestChart'
-import PositionsPanel from './components/PositionsPanel'
+import ModelsPanel from './components/ModelsPanel'
+import WorkspaceSidebar from './components/WorkspaceSidebar'
+import SideListPanel from './components/SideListPanel'
 import { useChat } from './hooks/useChat'
-import { useStrategy, useBacktest } from './hooks/useStrategy'
-
-const TABS = [
-  { id: 'backtest', label: 'Backtest', icon: BarChart2 },
-  { id: 'live', label: 'Live', icon: Activity },
-]
+import { useStrategy, useBacktest, useModels } from './hooks/useStrategy'
 
 export default function App() {
-  const { messages, isLoading, error, sessionId, latestStrategyId, latestBacktestId, deployedLiveId, sendUserMessage, clearChat } = useChat()
-  const { strategy, code, loading: stratLoading, fetchStrategy } = useStrategy()
-  const { backtestData, loading: btLoading, error: btError, fetchBacktest } = useBacktest()
-  const [rightTab, setRightTab] = useState('backtest')
+  const { messages, isLoading, error, sessionId, sessions, latestStrategyId, latestBacktestId, sendUserMessage, clearChat, refreshSessions, loadSession } = useChat()
+  const { fetchStrategy } = useStrategy()
+  const { backtestData, savedBacktests, loading: btLoading, error: btError, fetchBacktest, refreshBacktests } = useBacktest()
+  const { models, selectedModel, selectedCode, loading: modelsLoading, error: modelsError, refreshModels, selectModel } = useModels()
+  const [activeView, setActiveView] = useState('production')
 
-  // Auto-fetch strategy when agent generates one
   useEffect(() => {
-    if (latestStrategyId) fetchStrategy(latestStrategyId)
-  }, [latestStrategyId])
+    if (latestStrategyId) {
+      fetchStrategy(latestStrategyId)
+      selectModel(latestStrategyId)
+      refreshModels()
+    }
+  }, [latestStrategyId, fetchStrategy, selectModel, refreshModels])
 
-  // Auto-fetch backtest when agent runs one
   useEffect(() => {
     if (latestBacktestId) {
       fetchBacktest(latestBacktestId)
-      setRightTab('backtest')
+      setActiveView('backtests')
     }
-  }, [latestBacktestId])
+  }, [latestBacktestId, fetchBacktest])
 
-  // Switch to live tab on deploy
   useEffect(() => {
-    if (deployedLiveId) setRightTab('live')
-  }, [deployedLiveId])
+    refreshBacktests()
+    refreshModels()
+    refreshSessions()
+  }, [refreshBacktests, refreshModels, refreshSessions])
+
+  const handleSelectBacktest = (id) => {
+    fetchBacktest(id)
+    setActiveView('backtests')
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#0a0f1e', color: '#e2e8f0' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#eef3f7', color: '#263647' }}>
 
-      {/* Top Nav */}
+      {/* Top nav */}
       <div style={{
         height: 52, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '0 24px', borderBottom: '1px solid #1e2d45', background: '#0d1526', flexShrink: 0,
+        padding: '0 22px', borderBottom: '1px solid #d8e1eb', background: '#9badbd', flexShrink: 0,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <TrendingUp size={20} color="#00ff88" />
-          <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 600, fontSize: 16, color: '#00ff88', letterSpacing: 1 }}>
-            LEAN<span style={{ color: '#e2e8f0' }}>TRADE</span>
+          <TrendingUp size={19} color="#ffffff" />
+          <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 800, fontSize: 15, color: '#ffffff', letterSpacing: 1 }}>
+            LEANTRADE
           </span>
           <span style={{
-            fontSize: 10, color: '#4b5563', background: '#161d2f',
-            padding: '2px 8px', borderRadius: 4, border: '1px solid #1e2d45',
+            fontSize: 10, color: '#ffffff', background: 'rgba(255,255,255,0.14)',
+            padding: '2px 8px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.22)',
             fontFamily: 'JetBrains Mono',
-          }}>MVP v0.1</span>
+          }}>research mode</span>
         </div>
-        <div style={{ fontSize: 11, color: '#4b5563', fontFamily: 'JetBrains Mono' }}>
+        <div style={{ fontSize: 11, color: '#eef6ff', fontFamily: 'JetBrains Mono' }}>
           session: {sessionId?.slice(0, 8)}...
         </div>
       </div>
 
-      {/* Main Layout: Left sidebar | Chat | Right panel */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
-        {/* Left: Strategy Panel */}
-        <div style={{
-          width: 260, flexShrink: 0, borderRight: '1px solid #1e2d45',
-          background: '#0d1526', display: 'flex', flexDirection: 'column', overflow: 'hidden',
-        }}>
-          <StrategyPanel
-            strategy={strategy}
-            code={code}
-            loading={stratLoading}
-            backtestMetrics={backtestData?.metrics}
-          />
-        </div>
+        {/* Col 1 — nav rail */}
+        <WorkspaceSidebar
+          activeView={activeView}
+          onSelectView={setActiveView}
+        />
 
-        {/* Center: Chat */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-          <ChatInterface
-            messages={messages}
-            isLoading={isLoading}
-            error={error}
-            onSend={sendUserMessage}
-            onClear={clearChat}
-            latestStrategyId={latestStrategyId}
-            latestBacktestId={latestBacktestId}
-          />
-        </div>
+        {/* Col 2 — context list */}
+        <SideListPanel
+          activeView={activeView}
+          sessions={sessions}
+          activeSessionId={sessionId}
+          onSelectSession={(sid) => { loadSession(sid); setActiveView('production') }}
+          onNewChat={() => { clearChat(); setActiveView('production') }}
+          onRefreshSessions={refreshSessions}
+          backtests={savedBacktests}
+          activeBacktestId={backtestData?.id || latestBacktestId}
+          onSelectBacktest={handleSelectBacktest}
+          onRefreshBacktests={refreshBacktests}
+          models={models}
+          selectedModel={selectedModel}
+          onSelectModel={selectModel}
+          onRefreshModels={refreshModels}
+          modelsLoading={modelsLoading}
+        />
 
-        {/* Right: Backtest / Live panels */}
-        <div style={{
-          width: 380, flexShrink: 0, borderLeft: '1px solid #1e2d45',
-          background: '#0d1526', display: 'flex', flexDirection: 'column', overflow: 'hidden',
-        }}>
-          {/* Tab bar */}
-          <div style={{
-            display: 'flex', borderBottom: '1px solid #1e2d45', flexShrink: 0,
-            background: '#0a0f1e',
-          }}>
-            {TABS.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => setRightTab(id)}
-                style={{
-                  flex: 1, padding: '12px 0', background: 'none', border: 'none',
-                  borderBottom: rightTab === id ? '2px solid #00ff88' : '2px solid transparent',
-                  color: rightTab === id ? '#00ff88' : '#4b5563',
-                  fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  transition: 'all 0.2s', fontFamily: 'DM Sans',
-                }}
-              >
-                <Icon size={13} />
-                {label}
-                {id === 'live' && deployedLiveId && (
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#00ff88', animation: 'pulse 2s infinite' }} />
-                )}
-              </button>
-            ))}
-          </div>
-
-          {/* Tab content */}
-          <div style={{ flex: 1, overflow: 'hidden' }}>
-            {rightTab === 'backtest' && (
-              <BacktestChart
-                data={backtestData}
-                loading={btLoading}
-                error={btError}
-              />
-            )}
-            {rightTab === 'live' && (
-              <PositionsPanel
-                liveStrategyId={deployedLiveId}
-                onStop={() => {/* handled in hook */}}
-              />
-            )}
-          </div>
-        </div>
+        {/* Col 3 — detail panel */}
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0, background: '#ffffff' }}>
+          {activeView === 'production' && (
+            <ChatInterface
+              messages={messages}
+              isLoading={isLoading}
+              error={error}
+              onSend={sendUserMessage}
+              onClear={clearChat}
+              latestStrategyId={latestStrategyId}
+              latestBacktestId={latestBacktestId}
+            />
+          )}
+          {activeView === 'backtests' && (
+            <BacktestChart
+              data={backtestData}
+              loading={btLoading}
+              error={btError}
+            />
+          )}
+          {activeView === 'models' && (
+            <ModelsPanel
+              selectedModel={selectedModel}
+              selectedCode={selectedCode}
+              loading={modelsLoading}
+              error={modelsError}
+            />
+          )}
+        </main>
 
       </div>
     </div>
