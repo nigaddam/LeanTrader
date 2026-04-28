@@ -62,11 +62,12 @@ export const getAssetHistory = async (ticker, period = '3y') => {
   return res.data
 }
 
-export const deployStrategy = async (strategyId, ticker = 'BTC/USD', amountUsd = 100) => {
+export const deployStrategy = async (strategyId, ticker = 'BTC/USD', amountUsd = 100, confirmLive = false) => {
   const res = await api.post('/api/deploy', {
     strategy_id: strategyId,
     ticker,
     amount_usd: amountUsd,
+    confirm_live: confirmLive,
   })
   return res.data
 }
@@ -88,6 +89,55 @@ export const getLiveStrategy = async (liveId) => {
 
 export const getPositions = async () => {
   const res = await api.get('/api/positions')
+  return res.data
+}
+
+export const getKrakenConnection = async () => {
+  const res = await api.get('/api/connections/kraken')
+  return res.data
+}
+
+export const connectKraken = async (apiKey, apiSecret) => {
+  const res = await api.post('/api/connections/kraken', {
+    api_key: apiKey,
+    api_secret: apiSecret,
+  })
+  return res.data
+}
+
+export const disconnectKraken = async () => {
+  const res = await api.delete('/api/connections/kraken')
+  return res.data
+}
+
+export const getLightningConfig = async () => {
+  const res = await api.get('/api/connections/lightning/config')
+  return res.data
+}
+
+export const getLightningStatus = async () => {
+  const res = await api.get('/api/connections/lightning/status')
+  return res.data
+}
+
+export const connectAlby = async (accessToken, refreshToken = '') => {
+  const res = await api.post('/api/connections/lightning/alby', {
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  })
+  return res.data
+}
+
+export const exchangeAlbyCode = async (code, codeVerifier = '') => {
+  const res = await api.post('/api/connections/lightning/alby/callback', {
+    code,
+    code_verifier: codeVerifier,
+  })
+  return res.data
+}
+
+export const disconnectAlby = async () => {
+  const res = await api.delete('/api/connections/lightning/alby')
   return res.data
 }
 

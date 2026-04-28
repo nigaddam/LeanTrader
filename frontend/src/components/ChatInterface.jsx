@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react'
-import { Send, Trash2, Zap } from 'lucide-react'
+import { Send, ArrowUp } from 'lucide-react'
 import MessageBubble from './MessageBubble'
 
 const QUICK_PROMPTS = [
@@ -9,147 +9,274 @@ const QUICK_PROMPTS = [
   "Run a backtest on my strategy",
 ]
 
+const USE_CASES = [
+  {
+    label: 'Financial Advice',
+    prompts: [
+      'Analyze my portfolio risk',
+      'What should I rebalance?',
+      'How do I reduce drawdown?',
+    ],
+  },
+  {
+    label: 'Trading Bot',
+    prompts: [
+      'Create a BTC momentum strategy',
+      'Backtest RSI on ETH',
+      'Build a mean-reversion strategy for SOL',
+    ],
+  },
+  {
+    label: 'Connect Accounts',
+    prompts: [
+      'Link Kraken and trade automatically',
+      'Fetch my current holdings',
+      'Set up live paper trading',
+    ],
+  },
+]
+
+function HeroLanding({ onSend, isLoading }) {
+  const [input, setInput] = useState('')
+  const [activeTab, setActiveTab] = useState(0)
+  const inputRef = useRef(null)
+  const containerRef = useRef(null)
+
+  useEffect(() => { inputRef.current?.focus() }, [])
+
+  const handleSend = (text) => {
+    const msg = text || input
+    if (!msg.trim() || isLoading) return
+    onSend(msg.trim())
+    setInput('')
+  }
+
+  const handleKey = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
+  }
+
+  const focusInput = () => {
+    if (containerRef.current) {
+      containerRef.current.style.borderColor = '#6366f1'
+      containerRef.current.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.08)'
+    }
+  }
+  const blurInput = () => {
+    if (containerRef.current) {
+      containerRef.current.style.borderColor = '#e2e8f0'
+      containerRef.current.style.boxShadow = '0 2px 20px rgba(0,0,0,0.06)'
+    }
+  }
+
+  return (
+    <div style={{
+      flex: 1, display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      padding: '0 24px 80px', background: '#ffffff',
+    }}>
+      {/* Input box */}
+      <div
+        ref={containerRef}
+        style={{
+          width: '100%', maxWidth: 620,
+          background: '#ffffff', border: '1.5px solid #e2e8f0',
+          borderRadius: 16, padding: '10px 10px 10px 18px',
+          display: 'flex', alignItems: 'flex-end', gap: 8,
+          boxShadow: '0 2px 20px rgba(0,0,0,0.06)',
+          transition: 'border-color 0.15s, box-shadow 0.15s',
+          marginBottom: 20,
+        }}
+      >
+        <textarea
+          ref={inputRef}
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={handleKey}
+          onFocus={focusInput}
+          onBlur={blurInput}
+          placeholder="Ask about markets, describe a strategy, or say 'build me a trading bot'..."
+          rows={1}
+          style={{
+            flex: 1, resize: 'none', border: 'none', outline: 'none',
+            background: 'transparent', color: '#0f172a', fontSize: 15,
+            fontFamily: 'Inter, sans-serif', lineHeight: 1.6,
+            padding: '4px 0', maxHeight: 120, overflowY: 'auto',
+          }}
+          disabled={isLoading}
+        />
+        <button
+          onClick={() => handleSend()}
+          disabled={!input.trim() || isLoading}
+          style={{
+            width: 38, height: 38, borderRadius: 10, border: 'none',
+            background: input.trim() && !isLoading ? '#0f172a' : '#f1f5f9',
+            color: input.trim() && !isLoading ? '#ffffff' : '#94a3b8',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: input.trim() && !isLoading ? 'pointer' : 'not-allowed',
+            flexShrink: 0, transition: 'background 0.15s',
+          }}
+        >
+          <ArrowUp size={17} />
+        </button>
+      </div>
+
+      {/* Suggestion card — Perplexity style */}
+      <div style={{
+        width: '100%', maxWidth: 620,
+        background: '#f8fafc', borderRadius: 14,
+        overflow: 'hidden', border: '1px solid #f1f5f9',
+      }}>
+        {/* Tab row */}
+        <div style={{
+          display: 'flex', gap: 6, padding: '12px 14px 10px',
+          borderBottom: '1px solid #f1f5f9', overflowX: 'auto',
+        }}>
+          {USE_CASES.map((uc, i) => (
+            <button
+              key={uc.label}
+              onClick={() => setActiveTab(i)}
+              style={{
+                whiteSpace: 'nowrap', fontSize: 12, fontWeight: 600,
+                padding: '5px 13px', borderRadius: 999, border: 'none',
+                background: activeTab === i ? '#0f172a' : '#ffffff',
+                color: activeTab === i ? '#ffffff' : '#64748b',
+                cursor: 'pointer', transition: 'all 0.15s',
+                boxShadow: activeTab === i ? 'none' : '0 1px 2px rgba(0,0,0,0.05)',
+              }}
+            >
+              {uc.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Prompt list */}
+        <div style={{ padding: '6px 4px 8px' }}>
+          {USE_CASES[activeTab].prompts.map(p => (
+            <button
+              key={p}
+              onClick={() => handleSend(p)}
+              disabled={isLoading}
+              style={{
+                display: 'block', width: '100%', textAlign: 'left',
+                padding: '9px 14px', background: 'none', border: 'none',
+                fontSize: 13, color: '#374151', cursor: 'pointer',
+                borderRadius: 8, fontFamily: 'Inter, sans-serif',
+                transition: 'background 0.1s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'}
+              onMouseLeave={e => e.currentTarget.style.background = 'none'}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function ChatInterface({ messages, isLoading, error, onSend, onClear, latestStrategyId, latestBacktestId, onAction }) {
   const [input, setInput] = useState('')
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
 
+  // "Empty" = only the welcome message (id='welcome') or no messages
+  const realMessages = messages.filter(m => m.id !== 'welcome')
+  const isEmpty = realMessages.length === 0
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isLoading])
 
-  const handleSend = () => {
-    if (!input.trim() || isLoading) return
-    onSend(input)
+  const handleSend = (text) => {
+    const msg = text || input
+    if (!msg.trim() || isLoading) return
+    onSend(msg.trim())
     setInput('')
   }
 
   const handleKey = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
+  }
+
+  if (isEmpty) {
+    return <HeroLanding onSend={handleSend} isLoading={isLoading} />
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#ffffff' }}>
 
-      {/* Header */}
-      <div style={{
-        padding: '14px 28px',
-        borderBottom: '1px solid #e5eaf1',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        background: '#ffffff',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div className="pulse-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: '#4f46e5' }} />
-          <span style={{ fontFamily: 'JetBrains Mono', fontSize: 13, color: '#4f46e5', fontWeight: 700 }}>
-            Research Agent
-          </span>
-          <span style={{ fontSize: 11, color: '#64748b', background: '#f7f9fc', padding: '3px 9px', borderRadius: 999, border: '1px solid #e5eaf1' }}>
-            OpenAI
-          </span>
-        </div>
-        <button
-          onClick={onClear}
-          style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}
-          title="Clear conversation"
-        >
-          <Trash2 size={14} /> New Chat
-        </button>
-      </div>
-
-      {/* Status bar - shows active strategy/backtest */}
-      {(latestStrategyId || latestBacktestId) && (
-        <div style={{
-          padding: '6px 28px', background: '#f7f9fc',
-          borderBottom: '1px solid #e5eaf1',
-          display: 'flex', gap: 16, fontSize: 11, color: '#4f46e5',
-          fontFamily: 'JetBrains Mono',
-        }}>
-          {latestStrategyId && <span>strategy #{latestStrategyId} active</span>}
-          {latestBacktestId && <span>backtest #{latestBacktestId} complete</span>}
-        </div>
-      )}
-
       {/* Messages */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '26px 28px' }}>
-        <div style={{ maxWidth: 940, margin: '0 auto' }}>
-          {messages.map(msg => (
+      <div style={{ flex: 1, overflowY: 'auto', padding: '32px 0' }}>
+        <div style={{ maxWidth: 720, margin: '0 auto', padding: '0 24px' }}>
+          {messages.filter(m => m.id !== 'welcome').map(msg => (
             <MessageBubble key={msg.id} message={msg} onAction={onAction} />
           ))}
 
           {isLoading && (
-          <div className="fade-in-up" style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 16 }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: '50%',
-              background: '#6ee787',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14,
-            }}>🤖</div>
-            <div style={{
-          background: '#f7f9fc', border: '1px solid #e5eaf1',
-              borderRadius: 14, padding: '14px 18px',
-              display: 'flex', gap: 6, alignItems: 'center',
-            }}>
-              {[0, 1, 2].map(i => (
-                <div key={i} style={{
-                  width: 7, height: 7, borderRadius: '50%', background: '#4f46e5',
-                  animation: `pulse 1.2s ${i * 0.2}s infinite`,
-                }} />
-              ))}
+            <div className="fade-in-up" style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 24 }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: '50%', background: '#eef2ff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, color: '#6366f1', fontWeight: 800, flexShrink: 0,
+              }}>LT</div>
+              <div style={{ display: 'flex', gap: 5, alignItems: 'center', paddingTop: 6 }}>
+                {[0, 1, 2].map(i => (
+                  <div key={i} style={{
+                    width: 7, height: 7, borderRadius: '50%', background: '#94a3b8',
+                    animation: `dotBounce 1.2s ${i * 0.15}s infinite`,
+                  }} />
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {error && (
-          <div style={{
-            margin: '8px 0', padding: '10px 16px', background: 'rgba(255,68,102,0.1)',
-            border: '1px solid rgba(255,68,102,0.3)', borderRadius: 8,
-            color: '#ff4466', fontSize: 13,
-          }}>
-            ⚠️ {error}
-          </div>
-        )}
+          {error && (
+            <div style={{
+              margin: '8px 0 16px', padding: '10px 14px',
+              background: '#fef2f2', border: '1px solid #fecaca',
+              borderRadius: 8, color: '#dc2626', fontSize: 13,
+            }}>
+              ⚠️ {error}
+            </div>
+          )}
 
           <div ref={bottomRef} />
         </div>
       </div>
 
-      {/* Quick Prompts */}
+      {/* Quick prompts */}
       <div style={{
-        padding: '8px 28px', borderTop: '1px solid #e5eaf1',
-        display: 'flex', gap: 8, overflowX: 'auto', flexShrink: 0,
-        background: '#ffffff',
+        padding: '8px 24px', borderTop: '1px solid #f1f5f9',
+        display: 'flex', gap: 8, overflowX: 'auto', flexShrink: 0, background: '#ffffff',
       }}>
-        {QUICK_PROMPTS.map((p, i) => (
+        {QUICK_PROMPTS.map(p => (
           <button
-            key={i}
-            onClick={() => onSend(p)}
+            key={p}
+            onClick={() => handleSend(p)}
             disabled={isLoading}
             style={{
               whiteSpace: 'nowrap', fontSize: 11, padding: '4px 12px',
-              background: '#ffffff', border: '1px solid #d8e1eb',
+              background: '#f8fafc', border: '1px solid #e2e8f0',
               borderRadius: 999, color: '#64748b', cursor: 'pointer',
-              fontFamily: 'DM Sans', transition: 'all 0.2s',
-              flexShrink: 0,
+              fontFamily: 'Inter, sans-serif', flexShrink: 0,
             }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#4f46e5'; e.currentTarget.style.color = '#4f46e5' }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = '#d8e1eb'; e.currentTarget.style.color = '#64748b' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.color = '#6366f1' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#64748b' }}
           >
-            <Zap size={10} style={{ display: 'inline', marginRight: 4 }} />
             {p}
           </button>
         ))}
       </div>
 
-      {/* Input */}
-      <div style={{
-        padding: '16px 28px', borderTop: '1px solid #e5eaf1',
-        background: '#ffffff', display: 'flex', gap: 12, alignItems: 'flex-end',
-      }}>
-        <div style={{ maxWidth: 940, margin: '0 auto', width: '100%', display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+      {/* Input bar */}
+      <div style={{ padding: '12px 24px 16px', background: '#ffffff', borderTop: '1px solid #f1f5f9' }}>
+        <div style={{
+          maxWidth: 720, margin: '0 auto',
+          background: '#ffffff', border: '1.5px solid #e2e8f0',
+          borderRadius: 14, padding: '4px 4px 4px 16px',
+          display: 'flex', alignItems: 'flex-end', gap: 8,
+        }}>
           <textarea
             ref={inputRef}
             value={input}
@@ -158,35 +285,33 @@ export default function ChatInterface({ messages, isLoading, error, onSend, onCl
             placeholder="Ask about BTC, describe a strategy, request a backtest..."
             rows={1}
             style={{
-              flex: 1, resize: 'none', background: '#ffffff',
-              border: '2px solid #c4d1df', borderRadius: 0,
-              color: '#263647', padding: '18px 20px', fontSize: 15,
-              fontFamily: 'DM Sans', outline: 'none',
-              transition: 'border-color 0.2s, box-shadow 0.2s',
-              lineHeight: 1.5, maxHeight: 120, overflowY: 'auto',
+              flex: 1, resize: 'none', border: 'none', outline: 'none',
+              background: 'transparent', color: '#0f172a', fontSize: 14,
+              fontFamily: 'Inter, sans-serif', lineHeight: 1.6,
+              padding: '10px 0', maxHeight: 120, overflowY: 'auto',
             }}
-            onFocus={e => { e.target.style.borderColor = '#6d5dfc'; e.target.style.boxShadow = '0 0 0 3px rgba(109,93,252,0.08)' }}
-            onBlur={e => { e.target.style.borderColor = '#c4d1df'; e.target.style.boxShadow = 'none' }}
+            onFocus={e => { e.target.closest('div').style.borderColor = '#6366f1' }}
+            onBlur={e => { e.target.closest('div').style.borderColor = '#e2e8f0' }}
             disabled={isLoading}
           />
           <button
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={!input.trim() || isLoading}
             style={{
-              width: 56, height: 56, borderRadius: 0, border: 'none', cursor: 'pointer',
-              background: input.trim() && !isLoading ? '#6d5dfc' : '#d8e1eb',
-              color: input.trim() && !isLoading ? '#ffffff' : '#64748b',
+              width: 36, height: 36, borderRadius: 9, border: 'none',
+              background: input.trim() && !isLoading ? '#6366f1' : '#f1f5f9',
+              color: input.trim() && !isLoading ? '#ffffff' : '#94a3b8',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'all 0.2s', flexShrink: 0,
+              cursor: input.trim() && !isLoading ? 'pointer' : 'not-allowed',
+              flexShrink: 0, marginBottom: 4,
             }}
           >
-            <Send size={18} />
+            <ArrowUp size={16} />
           </button>
         </div>
-      </div>
-
-      <div style={{ padding: '6px 20px 10px', textAlign: 'center', fontSize: 10, color: '#94a3b8' }}>
-        Not financial advice. Trading involves risk. Always test in sandbox mode first.
+        <div style={{ textAlign: 'center', marginTop: 8, fontSize: 10, color: '#cbd5e1' }}>
+          Not financial advice. Always test in sandbox mode first.
+        </div>
       </div>
     </div>
   )

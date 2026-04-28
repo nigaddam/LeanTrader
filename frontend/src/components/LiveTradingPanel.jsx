@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Zap, Square, TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react'
+import { AlertTriangle, Zap, Square, TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react'
 
 const TICKERS = ['BTC/USD', 'ETH/USD', 'SOL/USD']
 
@@ -48,10 +48,14 @@ function ModeBadge({ mode }) {
   )
 }
 
-function DeployForm({ models, activeContext, onDeploy, loading }) {
+function DeployForm({ models, activeContext, krakenConnection, onDeploy, loading }) {
   const [strategyId, setStrategyId] = useState(activeContext?.strategy?.id || '')
   const [ticker, setTicker] = useState(activeContext?.asset || 'BTC/USD')
   const [amount, setAmount] = useState('100')
+  const [confirmText, setConfirmText] = useState('')
+  const [understandsRisk, setUnderstandsRisk] = useState(false)
+  const isLiveMode = krakenConnection?.mode === 'LIVE'
+  const liveConfirmed = !isLiveMode || (confirmText.trim().toUpperCase() === 'LIVE' && understandsRisk)
 
   useEffect(() => {
     if (activeContext?.strategy?.id) setStrategyId(activeContext.strategy.id)
@@ -59,8 +63,8 @@ function DeployForm({ models, activeContext, onDeploy, loading }) {
   }, [activeContext?.strategy?.id, activeContext?.asset])
 
   const handleDeploy = () => {
-    if (!strategyId) return
-    onDeploy(Number(strategyId), ticker, Number(amount))
+    if (!strategyId || !liveConfirmed) return
+    onDeploy(Number(strategyId), ticker, Number(amount), isLiveMode)
   }
 
   const inputStyle = {
@@ -104,18 +108,52 @@ function DeployForm({ models, activeContext, onDeploy, loading }) {
         />
       </div>
 
+      {isLiveMode && (
+        <div style={{
+          border: '1px solid #fca5a5',
+          background: '#fef2f2',
+          borderRadius: 9,
+          padding: 14,
+          marginBottom: 16,
+          color: '#991b1b',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 850, marginBottom: 10 }}>
+            <AlertTriangle size={15} />
+            Live Kraken trading is enabled
+          </div>
+          <div style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 12 }}>
+            This can place real market orders on Kraken. Use small amounts and keys with no withdrawal permission.
+          </div>
+          <label style={{ ...labelStyle, color: '#991b1b' }}>Type LIVE to confirm</label>
+          <input
+            value={confirmText}
+            onChange={e => setConfirmText(e.target.value)}
+            placeholder="LIVE"
+            style={{ ...inputStyle, borderColor: '#fca5a5', marginBottom: 10 }}
+          />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={understandsRisk}
+              onChange={e => setUnderstandsRisk(e.target.checked)}
+            />
+            I understand this may execute real trades.
+          </label>
+        </div>
+      )}
+
       <button
         onClick={handleDeploy}
-        disabled={loading || !strategyId}
+        disabled={loading || !strategyId || !liveConfirmed}
         style={{
           width: '100%', padding: '10px 0', borderRadius: 8,
-          border: 'none', background: loading || !strategyId ? '#c7d2fe' : '#4f46e5',
-          color: '#fff', fontWeight: 700, fontSize: 13, cursor: loading || !strategyId ? 'not-allowed' : 'pointer',
+          border: 'none', background: loading || !strategyId || !liveConfirmed ? '#c7d2fe' : isLiveMode ? '#dc2626' : '#4f46e5',
+          color: '#fff', fontWeight: 700, fontSize: 13, cursor: loading || !strategyId || !liveConfirmed ? 'not-allowed' : 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
         }}
       >
         <Zap size={14} />
-        {loading ? 'Starting…' : 'Go Live (Paper)'}
+        {loading ? 'Starting…' : isLiveMode ? 'Go Live (Real Kraken)' : 'Go Live (Paper)'}
       </button>
     </div>
   )
@@ -143,7 +181,12 @@ function OrdersTable({ orders }) {
             </td>
             <td style={{ padding: '7px 8px', fontFamily: 'JetBrains Mono' }}>{Number(o.volume).toFixed(6)}</td>
             <td style={{ padding: '7px 8px', fontFamily: 'JetBrains Mono' }}>{fmtUsd(o.price)}</td>
-            <td style={{ padding: '7px 8px', color: '#64748b' }}>{o.status}</td>
+            <td style={{ padding: '7px 8px', color: o.status === 'failed' ? '#dc2626' : '#64748b' }}>
+              {o.status}
+              {o.status === 'failed' && o.kraken_order_id ? (
+                <div style={{ marginTop: 3, fontSize: 11, maxWidth: 360, whiteSpace: 'normal' }}>{o.kraken_order_id}</div>
+              ) : null}
+            </td>
             <td style={{ padding: '7px 8px' }}>
               <span style={{ fontSize: 10, background: o.sandbox ? '#f0fdf4' : '#fef2f2', color: o.sandbox ? '#16a34a' : '#dc2626', borderRadius: 4, padding: '1px 5px', fontWeight: 600 }}>
                 {o.sandbox ? 'SANDBOX' : 'LIVE'}
@@ -156,7 +199,7 @@ function OrdersTable({ orders }) {
   )
 }
 
-export default function LiveTradingPanel({ selectedLive, models, activeContext, loading, error, onDeploy, onStop, onRefresh }) {
+export default function LiveTradingPanel({ selectedLive, models, activeContext, krakenConnection, loading, error, onDeploy, onStop, onRefresh }) {
   const [countdown, setCountdown] = useState(null)
 
   // Countdown to next evaluation
@@ -208,7 +251,27 @@ export default function LiveTradingPanel({ selectedLive, models, activeContext, 
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
-        <DeployForm models={models} activeContext={activeContext} onDeploy={onDeploy} loading={loading} />
+        {error && (
+          <div style={{
+            border: '1px solid #fecaca',
+            background: '#fef2f2',
+            color: '#dc2626',
+            borderRadius: 8,
+            padding: '10px 12px',
+            fontSize: 13,
+            fontWeight: 700,
+            marginBottom: 16,
+          }}>
+            {error}
+          </div>
+        )}
+        <DeployForm
+          models={models}
+          activeContext={activeContext}
+          krakenConnection={krakenConnection}
+          onDeploy={onDeploy}
+          loading={loading}
+        />
 
         {/* Selected live strategy detail */}
         {selectedLive ? (
@@ -254,7 +317,7 @@ export default function LiveTradingPanel({ selectedLive, models, activeContext, 
 
             {/* Orders */}
             <div style={{ fontSize: 13, fontWeight: 700, color: '#263647', marginBottom: 10 }}>
-              Order History
+              {selectedLive.mode === 'SANDBOX' ? 'Paper Order History' : 'Order History'}
             </div>
             <OrdersTable orders={selectedLive.orders} />
           </>

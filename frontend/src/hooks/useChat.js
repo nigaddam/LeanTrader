@@ -7,17 +7,11 @@ const LS_KEY = 'lt_sessions'
 const WELCOME_MESSAGE = {
   id: 'welcome',
   role: 'assistant',
-  content: `Welcome to **LeanTrade** 🟢
+  content: `Welcome to **LangStock** — your operating system for managing finances.
 
-I'm your AI trading advisor. Let's build a profitable strategy together.
+I can help you analyze markets, build trading strategies, run backtests, and deploy live bots to Kraken.
 
-**What we can do:**
-- Analyze any crypto asset (BTC, ETH, SOL...)
-- Design custom trading strategies (SMA, RSI, Bollinger Bands)
-- Backtest against 5 years of data — see what $100 becomes
-- Deploy live to Kraken when you're ready
-
-**Let's discuss Bitcoin or another crypto asset today.** Which market interests you?`,
+**Where would you like to start?**`,
   timestamp: new Date().toISOString(),
 }
 

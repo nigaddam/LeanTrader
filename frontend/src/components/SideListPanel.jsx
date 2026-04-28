@@ -329,22 +329,28 @@ function ConnectionsList({ selectedConnectorId, connectionState, onSelectConnect
               {connectors.map(connector => {
                 const active = selectedConnectorId === connector.id
                 const connected = Boolean(connectionState?.[connector.id]?.connected)
+                const activeColor = connector.id === 'alby' ? '#7c3aed' : '#4f46e5'
+                const activeBg = connector.id === 'alby' ? '#f3e8ff' : '#f0edff'
                 return (
                   <button
                     key={connector.id}
                     onClick={() => onSelectConnector(connector.id)}
                     style={{
                       textAlign: 'left',
-                      border: `1px solid ${active ? '#6d5dfc' : '#e5eaf1'}`,
-                      background: active ? '#f0edff' : '#ffffff',
+                      border: `1px solid ${active ? activeColor : '#e5eaf1'}`,
+                      background: active ? activeBg : '#ffffff',
                       borderRadius: 8,
                       padding: '10px 12px',
                       cursor: 'pointer',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-                      <Plug size={13} color={active ? '#4f46e5' : '#94a3b8'} />
-                      <span style={{ fontSize: 12, fontWeight: 800, color: active ? '#4f46e5' : '#263647' }}>
+                      {connector.id === 'alby' ? (
+                        <Zap size={13} color={active ? '#7c3aed' : '#94a3b8'} />
+                      ) : (
+                        <Plug size={13} color={active ? activeColor : '#94a3b8'} />
+                      )}
+                      <span style={{ fontSize: 12, fontWeight: 800, color: active ? activeColor : '#263647' }}>
                         {connector.name}
                       </span>
                     </div>

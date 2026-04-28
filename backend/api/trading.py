@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
 from models.db import get_db, LiveStrategy, LiveOrder, Strategy
+from trading.credentials import get_kraken_credentials, has_kraken_credentials
 import os
 
 router = APIRouter()
@@ -14,6 +15,7 @@ class DeployRequest(BaseModel):
     strategy_id: int
     ticker: str = "BTC/USD"
     amount_usd: float = 100.0
+    confirm_live: bool = False
 
 
 # ── Deploy / stop ─────────────────────────────────────────────────────────────
@@ -28,6 +30,12 @@ async def deploy_strategy(request: DeployRequest, db: AsyncSession = Depends(get
         raise HTTPException(status_code=404, detail="Strategy not found")
 
     sandbox = os.getenv("KRAKEN_SANDBOX", "true").lower() == "true"
+    if request.amount_usd <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be greater than zero.")
+    if not sandbox and not has_kraken_credentials():
+        raise HTTPException(status_code=400, detail="Connect Kraken before deploying a live strategy.")
+    if not sandbox and not request.confirm_live:
+        raise HTTPException(status_code=400, detail="Live trading requires explicit confirmation.")
 
     live = LiveStrategy(
         strategy_id=request.strategy_id,
@@ -157,9 +165,12 @@ async def get_positions():
     """Get current Kraken balance and positions."""
     try:
         import krakenex
+        credentials = get_kraken_credentials()
+        if not credentials:
+            return {"error": "Kraken is not connected.", "balance": {}, "positions": []}
         k = krakenex.API(
-            key=os.getenv("KRAKEN_API_KEY", ""),
-            secret=os.getenv("KRAKEN_API_SECRET", "")
+            key=credentials.api_key,
+            secret=credentials.api_secret,
         )
         resp = k.query_private("Balance")
         if resp.get("error"):

@@ -3,7 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
-from models.db import get_db, Backtest, Strategy
+from models.db import get_db, Backtest, LightningPayment, Strategy
+from trading.lightning_credentials import get_alby_tokens
 from strategies.backtester import run_backtest_for_strategy
 import json
 
@@ -15,6 +16,7 @@ class BacktestRequest(BaseModel):
     ticker: str = "BTC/USD"
     period: str = "5y"
     initial_capital: float = 100.0
+    session_id: str = ""
 
 
 def derive_trades_from_chart(chart_data: list) -> list:
@@ -37,6 +39,13 @@ async def create_backtest(request: BacktestRequest, db: AsyncSession = Depends(g
     strat = await db.get(Strategy, request.strategy_id)
     if not strat:
         raise HTTPException(status_code=404, detail="Strategy not found")
+
+    if get_alby_tokens():
+        db.add(LightningPayment(
+            session_id=request.session_id or strat.session_id or "",
+            amount_sats=10,
+            type="backtest_fee",
+        ))
 
     try:
         results = run_backtest_for_strategy(

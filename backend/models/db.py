@@ -135,6 +135,30 @@ class LiveOrder(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
 
 
+class User(Base):
+    """Registered users (Google OAuth)."""
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    google_id = Column(String, unique=True, index=True, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String)
+    avatar_url = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    last_login = Column(DateTime, default=datetime.utcnow)
+
+
+class LightningPayment(Base):
+    """Records Lightning payment/debit attempts for platform services."""
+    __tablename__ = "lightning_payments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(String, index=True)
+    amount_sats = Column(Integer)
+    type = Column(String)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
+
 def _migrate(conn):
     """Add columns that may be missing from pre-existing tables."""
     from sqlalchemy import inspect, text

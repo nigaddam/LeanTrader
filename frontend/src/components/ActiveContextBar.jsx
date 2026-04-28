@@ -1,62 +1,62 @@
-import { BarChart2, Bookmark, Rocket } from 'lucide-react'
+import { BarChart2, Bookmark, Zap } from 'lucide-react'
 
 export default function ActiveContextBar({ context, onRunBacktest, onSaveModel, onDeployLive }) {
-  const asset = context?.asset || 'Select asset'
-  const strategy = context?.strategy?.name || 'Select strategy'
+  const strategy = context?.strategy
+  if (!strategy) return null  // hidden until a strategy is defined
 
-  const buttonStyle = {
-    height: 30,
-    padding: '0 10px',
-    borderRadius: 7,
-    border: '1px solid #d8e1eb',
-    background: '#ffffff',
-    color: '#475569',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-    fontSize: 12,
-    fontWeight: 700,
-  }
+  const asset = context?.asset || 'BTC/USD'
 
   return (
     <div style={{
       flexShrink: 0,
-      borderBottom: '1px solid #e5eaf1',
-      background: '#fbfcfe',
-      padding: '10px 22px',
+      borderBottom: '1px solid #f1f5f9',
+      background: '#fafafa',
+      padding: '8px 24px',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 14,
+      gap: 12,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0 }}>
-        <div style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: 'JetBrains Mono', fontWeight: 800 }}>
-          Active Context
-        </div>
-        <div style={{ display: 'flex', gap: 8, minWidth: 0, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: '#64748b' }}>
-            Asset: <strong style={{ color: '#263647' }}>{asset}</strong>
-          </span>
-          <span style={{ fontSize: 12, color: '#64748b', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            Strategy: <strong style={{ color: '#263647' }}>{strategy}</strong>
-          </span>
-        </div>
+      {/* Context pill */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+        <span style={{
+          fontSize: 11, background: '#eef2ff', color: '#6366f1',
+          borderRadius: 999, padding: '2px 9px', fontWeight: 600,
+        }}>
+          {asset}
+        </span>
+        <span style={{
+          fontSize: 12, color: '#374151', overflow: 'hidden',
+          textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500,
+        }}>
+          {strategy.name}
+        </span>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-        <button onClick={onRunBacktest} style={buttonStyle}>
-          <BarChart2 size={13} />
-          Run Backtest
-        </button>
-        <button onClick={onSaveModel} style={buttonStyle}>
-          <Bookmark size={13} />
-          Save Model
-        </button>
-        <button onClick={onDeployLive} style={{ ...buttonStyle, color: '#4f46e5', borderColor: '#c7d2fe' }}>
-          <Rocket size={13} />
-          Deploy Live
-        </button>
+      {/* Action buttons */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+        {[
+          { label: 'Backtest', icon: BarChart2, fn: onRunBacktest },
+          { label: 'Save', icon: Bookmark, fn: onSaveModel },
+          { label: 'Deploy Live', icon: Zap, fn: onDeployLive, accent: true },
+        ].map(({ label, icon: Icon, fn, accent }) => (
+          <button
+            key={label}
+            onClick={fn}
+            style={{
+              height: 28, padding: '0 10px', borderRadius: 7,
+              border: `1px solid ${accent ? '#c7d2fe' : '#e2e8f0'}`,
+              background: accent ? '#eef2ff' : '#ffffff',
+              color: accent ? '#6366f1' : '#374151',
+              display: 'flex', alignItems: 'center', gap: 5,
+              fontSize: 12, fontWeight: 600, cursor: 'pointer',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#eef2ff'; e.currentTarget.style.borderColor = '#6366f1' }}
+            onMouseLeave={e => { e.currentTarget.style.background = accent ? '#eef2ff' : '#ffffff'; e.currentTarget.style.borderColor = accent ? '#c7d2fe' : '#e2e8f0' }}
+          >
+            <Icon size={12} /> {label}
+          </button>
+        ))}
       </div>
     </div>
   )

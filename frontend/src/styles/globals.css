@@ -3,70 +3,51 @@
 @tailwind utilities;
 
 :root {
-  --green: #00ff88;
-  --green-dim: #00cc6a;
-  --navy: #0a0f1e;
-  --slate: #111827;
-  --card: #161d2f;
-  --border: #1e2d45;
-  --muted: #4b5563;
-  --text: #e2e8f0;
-  --text-dim: #94a3b8;
-  --red: #ff4466;
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
+  --bg: #ffffff;
+  --sidebar-bg: #fafafa;
+  --border: #f1f5f9;
+  --border-mid: #e2e8f0;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --text-faint: #94a3b8;
+  --user-bubble: #f4f4f5;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  background-color: var(--navy);
+  background-color: var(--bg);
   color: var(--text);
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   height: 100vh;
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
 #root { height: 100vh; display: flex; flex-direction: column; }
 
-/* Scrollbars */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: var(--navy); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
 
-/* Green glow effect */
-.glow-green {
-  box-shadow: 0 0 20px rgba(0, 255, 136, 0.15);
-}
-
-/* Typing cursor blink */
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
-.cursor-blink::after {
-  content: '▋';
-  color: var(--green);
-  animation: blink 1s infinite;
-  margin-left: 2px;
-}
-
-/* Fade in animation */
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.fade-in-up {
-  animation: fadeInUp 0.3s ease forwards;
-}
+.fade-in-up { animation: fadeInUp 0.22s ease forwards; }
 
-/* Pulse dot for live indicator */
 @keyframes pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.8); }
+  50% { opacity: 0.45; transform: scale(0.75); }
 }
-.pulse-dot {
-  animation: pulse 2s infinite;
+.pulse-dot { animation: pulse 2s infinite; }
+
+@keyframes dotBounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+  40% { transform: translateY(-4px); opacity: 1; }
 }
 
-/* Code block overrides */
 pre { border-radius: 8px !important; }

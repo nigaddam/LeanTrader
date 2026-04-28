@@ -14,9 +14,10 @@ import logging
 from datetime import datetime
 import pandas as pd
 import numpy as np
+from sqlalchemy import select
 
 from models.db import async_session, LiveStrategy, LiveOrder, Strategy
-from trading.kraken_executor import place_market_order
+from trading.kraken_executor import get_current_price, place_market_order
 from strategies.backtester import fetch_ohlcv
 
 logger = logging.getLogger("live_runner")
@@ -75,9 +76,10 @@ async def _loop(live_id: int, strategy_id: int, ticker: str, amount_usd: float) 
             logger.info(f"[live-{live_id}] Signal → {side.upper()}")
             try:
                 order = place_market_order(ticker, side, amount_usd)
-                await _save_order(live_id, ticker, order)
+                await _save_order(live_id, ticker, order, amount_usd)
             except Exception as exc:
                 logger.error(f"[live-{live_id}] Order error: {exc}")
+                await _save_order_error(live_id, ticker, side, amount_usd, str(exc))
 
         last_signal = signal
 
@@ -88,7 +90,9 @@ async def _evaluate(live_id: int, strategy_id: int, ticker: str) -> int:
     """Fetch data, run strategy, return latest signal."""
     # Run blocking IO in thread pool to not block the event loop
     loop = asyncio.get_running_loop()
-    signal = await loop.run_in_executor(None, _compute_signal, strategy_id, ticker)
+    signal = await _compute_price_target_signal(live_id, strategy_id, ticker)
+    if signal is None:
+        signal = await loop.run_in_executor(None, _compute_signal, strategy_id, ticker)
 
     # Persist last_signal + timestamp
     async with async_session() as db:
@@ -99,6 +103,52 @@ async def _evaluate(live_id: int, strategy_id: int, ticker: str) -> int:
             await db.commit()
 
     return signal
+
+
+async def _compute_price_target_signal(live_id: int, strategy_id: int, ticker: str) -> int | None:
+    """Handle simple buy_price/sell_price strategies with live state.
+
+    Generated strategy classes are stateless across polling cycles, so exact
+    price-target strategies are evaluated here against current Kraken price and
+    existing live orders.
+    """
+    async with async_session() as db:
+        strat = await db.get(Strategy, strategy_id)
+        if not strat or strat.type != "custom":
+            return None
+
+        params = strat.get_parameters()
+        if "buy_price" not in params or "sell_price" not in params:
+            return None
+
+        result = await db.execute(
+            select(LiveOrder)
+            .where(LiveOrder.live_strategy_id == live_id)
+            .order_by(LiveOrder.timestamp.asc())
+        )
+        orders = result.scalars().all()
+
+    loop = asyncio.get_running_loop()
+    current_price = await loop.run_in_executor(None, get_current_price, ticker)
+    buy_price = float(params["buy_price"])
+    sell_price = float(params["sell_price"])
+
+    filled_buys = sum(1 for order in orders if order.side == "buy" and order.status in {"filled", "pending"})
+    filled_sells = sum(1 for order in orders if order.side == "sell" and order.status in {"filled", "pending"})
+    has_position = filled_buys > filled_sells
+
+    if not has_position and current_price <= buy_price:
+        logger.info(f"[live-{live_id}] Price target BUY: current={current_price} <= buy={buy_price}")
+        return 1
+    if has_position and current_price >= sell_price:
+        logger.info(f"[live-{live_id}] Price target SELL: current={current_price} >= sell={sell_price}")
+        return -1
+
+    logger.info(
+        f"[live-{live_id}] Price target HOLD: current={current_price}, buy={buy_price}, sell={sell_price}, "
+        f"has_position={has_position}"
+    )
+    return 0
 
 
 def _compute_signal(strategy_id: int, ticker: str) -> int:
@@ -150,18 +200,35 @@ def _fetch_strategy_code_sync(strategy_id: int) -> str | None:
         loop.close()
 
 
-async def _save_order(live_id: int, ticker: str, order: dict) -> None:
+async def _save_order(live_id: int, ticker: str, order: dict, amount_usd: float) -> None:
     async with async_session() as db:
         live_order = LiveOrder(
             live_strategy_id=live_id,
             kraken_order_id=order.get("order_id"),
             ticker=ticker,
             side=order["side"],
-            amount_usd=0,
+            amount_usd=amount_usd,
             volume=order.get("volume", 0),
             price=order.get("price", 0),
             status=order.get("status", "filled"),
             sandbox=order.get("sandbox", True),
+        )
+        db.add(live_order)
+        await db.commit()
+
+
+async def _save_order_error(live_id: int, ticker: str, side: str, amount_usd: float, error: str) -> None:
+    async with async_session() as db:
+        live_order = LiveOrder(
+            live_strategy_id=live_id,
+            kraken_order_id=error[:240],
+            ticker=ticker,
+            side=side,
+            amount_usd=amount_usd,
+            volume=0,
+            price=0,
+            status="failed",
+            sandbox=os.getenv("KRAKEN_SANDBOX", "true").lower() == "true",
         )
         db.add(live_order)
         await db.commit()

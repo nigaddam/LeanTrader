@@ -234,11 +234,10 @@ def deploy_to_kraken(strategy_id: int, amount_usd: float = 100.0, confirmed: boo
         })
 
     sandbox = os.getenv("KRAKEN_SANDBOX", "true").lower() == "true"
-    api_key = os.getenv("KRAKEN_API_KEY", "")
-    api_secret = os.getenv("KRAKEN_API_SECRET", "")
+    from trading.credentials import has_kraken_credentials
 
-    if not api_key or not api_secret:
-        return json.dumps({"error": "Kraken API keys not configured. Add KRAKEN_API_KEY and KRAKEN_API_SECRET to .env"})
+    if not sandbox and not has_kraken_credentials():
+        return json.dumps({"error": "Kraken is not connected. Connect Kraken before deploying live trading."})
 
     import asyncio
     from models.db import async_session, Strategy, LiveStrategy
@@ -287,11 +286,8 @@ def get_kraken_positions() -> str:
     Returns positions, unrealized P&L, and available balance.
     """
     try:
-        import krakenex
-        k = krakenex.API(
-            key=os.getenv("KRAKEN_API_KEY", ""),
-            secret=os.getenv("KRAKEN_API_SECRET", "")
-        )
+        from trading.kraken_executor import get_kraken_client
+        k = get_kraken_client()
 
         balance_resp = k.query_private("Balance")
         if balance_resp.get("error"):

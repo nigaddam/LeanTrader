@@ -1,5 +1,13 @@
 export const CONNECTORS = [
   {
+    id: 'alby',
+    name: 'Alby',
+    group: 'Lightning',
+    type: 'lightning',
+    accent: '#7c3aed',
+    description: 'Connect Alby for Lightning payments and LangStock agent wallet identity.',
+  },
+  {
     id: 'kraken',
     name: 'Kraken',
     group: 'Trading',

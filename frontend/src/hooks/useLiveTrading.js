@@ -35,11 +35,11 @@ export function useLiveTrading() {
     }
   }, [])
 
-  const deploy = useCallback(async (strategyId, ticker, amountUsd) => {
+  const deploy = useCallback(async (strategyId, ticker, amountUsd, confirmLive = false) => {
     setLoading(true)
     setError(null)
     try {
-      const data = await deployStrategy(strategyId, ticker, amountUsd)
+      const data = await deployStrategy(strategyId, ticker, amountUsd, confirmLive)
       await refreshList()
       await selectLive(data.live_strategy_id)
       return data
