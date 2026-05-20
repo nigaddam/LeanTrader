@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
-  Plus, ChevronDown, ChevronRight,
+  Plus, ChevronDown, ChevronRight, ChevronUp,
   BarChart2, Sigma, Zap, Coins,
   TrendingUp as TrendUp, TrendingDown, Minus,
   Check, LogIn, LogOut, X,
+  User, Settings, HelpCircle, Info, Mail,
 } from 'lucide-react'
 
 const fmtDate = (d) => {
@@ -254,6 +255,182 @@ function ToolSection({ id, icon: Icon, label, activeView, onSelectView, children
   )
 }
 
+// ── Account footer with popover menu ─────────────────────────────────────────
+function AccountFooter({ user, onSignIn, onSignOut }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const menuItems = [
+    { icon: User,        label: 'User Profile',      sub: 'Name, photo & details' },
+    { icon: Settings,    label: 'Account Settings',  sub: 'Password & security' },
+    { icon: HelpCircle,  label: "FAQ's",              sub: 'Common questions' },
+    { icon: Info,        label: 'About Us',           sub: 'Learn about LangStock' },
+    { icon: Mail,        label: 'Reach Out',          sub: 'Contact & support' },
+  ]
+
+  if (!user) {
+    return (
+      <div style={{ padding: '10px 10px 16px', borderTop: '1px solid #f1f5f9', flexShrink: 0 }}>
+        <button
+          onClick={onSignIn}
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+            padding: '10px 14px', borderRadius: 10,
+            border: '1px solid #e2e8f0', background: '#ffffff', color: '#374151',
+            cursor: 'pointer', fontSize: 13, fontWeight: 600,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.background = '#fafafe' }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = '#ffffff' }}
+        >
+          {/* Google "G" mark */}
+          <svg width="16" height="16" viewBox="0 0 48 48" style={{ flexShrink: 0 }}>
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.36-8.16 2.36-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+          </svg>
+          <span style={{ flex: 1, textAlign: 'left' }}>Sign in with Google</span>
+          <LogIn size={13} color="#94a3b8" />
+        </button>
+        <p style={{ margin: '8px 2px 0', fontSize: 10, color: '#cbd5e1', textAlign: 'center', lineHeight: 1.4 }}>
+          Sign in to save chats & strategies
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div ref={ref} style={{ padding: '8px 10px 14px', borderTop: '1px solid #f1f5f9', flexShrink: 0, position: 'relative' }}>
+
+      {/* Popover menu */}
+      {open && (
+        <div style={{
+          position: 'absolute', bottom: 'calc(100% + 6px)', left: 8, right: 8,
+          background: '#ffffff', borderRadius: 12,
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.06)',
+          overflow: 'hidden', zIndex: 300,
+        }}>
+          {/* Menu header */}
+          <div style={{
+            padding: '12px 14px 10px', background: '#fafafa',
+            borderBottom: '1px solid #f1f5f9',
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {user.name}
+            </div>
+            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {user.email}
+            </div>
+          </div>
+
+          {/* Menu items */}
+          <div style={{ padding: '6px 0' }}>
+            {menuItems.map(({ icon: Icon, label, sub }) => (
+              <button
+                key={label}
+                onClick={() => setOpen(false)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '8px 14px', background: 'none', border: 'none',
+                  cursor: 'pointer', textAlign: 'left',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                onMouseLeave={e => e.currentTarget.style.background = 'none'}
+              >
+                <div style={{
+                  width: 28, height: 28, borderRadius: 7, background: '#f1f5f9',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}>
+                  <Icon size={13} color="#6366f1" />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{label}</div>
+                  <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 1 }}>{sub}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Logout */}
+          <div style={{ padding: '6px 0 6px', borderTop: '1px solid #f1f5f9' }}>
+            <button
+              onClick={() => { setOpen(false); onSignOut() }}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                padding: '8px 14px', background: 'none', border: 'none',
+                cursor: 'pointer', textAlign: 'left',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#fff5f5'}
+              onMouseLeave={e => e.currentTarget.style.background = 'none'}
+            >
+              <div style={{
+                width: 28, height: 28, borderRadius: 7, background: '#fee2e2',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>
+                <LogOut size={13} color="#ef4444" />
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#ef4444' }}>Sign Out</div>
+                <div style={{ fontSize: 10, color: '#fca5a5', marginTop: 1 }}>End your session</div>
+              </div>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Trigger button */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', gap: 9,
+          padding: '8px 10px', borderRadius: 10,
+          background: open ? '#f1f5f9' : 'none',
+          border: '1px solid transparent',
+          cursor: 'pointer', textAlign: 'left',
+          transition: 'background 0.15s, border-color 0.15s',
+        }}
+        onMouseEnter={e => { if (!open) { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0' } }}
+        onMouseLeave={e => { if (!open) { e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = 'transparent' } }}
+      >
+        {/* Avatar */}
+        {user.avatar_url ? (
+          <img src={user.avatar_url} alt="" style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, border: '2px solid #e0e7ff' }} />
+        ) : (
+          <div style={{
+            width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 13, fontWeight: 700, color: '#ffffff', flexShrink: 0,
+          }}>
+            {user.name?.[0]?.toUpperCase() || '?'}
+          </div>
+        )}
+
+        {/* Name + email */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {user.name}
+          </div>
+          <div style={{ fontSize: 10, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
+            {user.email}
+          </div>
+        </div>
+
+        {/* Chevron */}
+        {open ? <ChevronUp size={13} color="#94a3b8" style={{ flexShrink: 0 }} /> : <ChevronDown size={13} color="#94a3b8" style={{ flexShrink: 0 }} />}
+      </button>
+    </div>
+  )
+}
+
 // ── Main Sidebar ──────────────────────────────────────────────────────────────
 export default function Sidebar({
   activeView, onSelectView, onNewChat,
@@ -429,63 +606,8 @@ export default function Sidebar({
 
       </div>
       {/* Auth — pinned to bottom */}
-      <div style={{ padding: '10px 10px 14px', borderTop: '1px solid #f1f5f9', flexShrink: 0 }}>
-        {user ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '4px 2px' }}>
-            {user.avatar_url ? (
-              <img
-                src={user.avatar_url}
-                alt=""
-                style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0 }}
-              />
-            ) : (
-              <div style={{
-                width: 30, height: 30, borderRadius: '50%', background: '#e0e7ff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 12, fontWeight: 700, color: '#6366f1', flexShrink: 0,
-              }}>
-                {user.name?.[0]?.toUpperCase() || '?'}
-              </div>
-            )}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {user.name}
-              </div>
-              <div style={{ fontSize: 10, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {user.email}
-              </div>
-            </div>
-            <button
-              onClick={onSignOut}
-              title="Sign out"
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: '#94a3b8', padding: 4, borderRadius: 5, flexShrink: 0,
-              }}
-              onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
-              onMouseLeave={e => e.currentTarget.style.color = '#94a3b8'}
-            >
-              <LogOut size={14} />
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={onSignIn}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-              padding: '9px 14px', borderRadius: 9,
-              border: 'none', background: '#3b82f6', color: '#ffffff',
-              cursor: 'pointer', fontSize: 13, fontWeight: 600,
-              transition: 'background 0.15s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = '#2563eb'}
-            onMouseLeave={e => e.currentTarget.style.background = '#3b82f6'}
-          >
-            <LogIn size={14} />
-            Sign in with Google
-          </button>
-        )}
-      </div>
+      <AccountFooter user={user} onSignIn={onSignIn} onSignOut={onSignOut} />
+
 
     </aside>
     </>

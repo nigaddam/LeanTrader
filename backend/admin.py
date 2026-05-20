@@ -11,6 +11,7 @@ from starlette.requests import Request
 
 from models.db import (
     engine,
+    Session,
     User,
     Conversation,
     Strategy,
@@ -42,6 +43,16 @@ class _AdminAuth(AuthenticationBackend):
 
 # ── Model views ───────────────────────────────────────────────────────────────
 
+class SessionAdmin(ModelView, model=Session):
+    name = "Session"
+    name_plural = "Sessions"
+    icon = "fa-solid fa-clock-rotate-left"
+    column_list = [Session.id, Session.session_id, Session.user_id, Session.parent_session_id, Session.started_at, Session.last_active_at]
+    column_searchable_list = [Session.session_id, Session.user_id]
+    column_sortable_list = [Session.id, Session.started_at, Session.last_active_at]
+    can_delete = False
+
+
 class UserAdmin(ModelView, model=User):
     name = "User"
     name_plural = "Users"
@@ -56,8 +67,8 @@ class ConversationAdmin(ModelView, model=Conversation):
     name = "Conversation"
     name_plural = "Conversations"
     icon = "fa-solid fa-comments"
-    column_list = [Conversation.id, Conversation.session_id, Conversation.created_at, Conversation.updated_at]
-    column_searchable_list = [Conversation.session_id]
+    column_list = [Conversation.id, Conversation.session_id, Conversation.user_id, Conversation.created_at, Conversation.updated_at]
+    column_searchable_list = [Conversation.session_id, Conversation.user_id]
     column_sortable_list = [Conversation.id, Conversation.created_at]
     can_delete = False
 
@@ -66,8 +77,8 @@ class StrategyAdmin(ModelView, model=Strategy):
     name = "Strategy"
     name_plural = "Strategies"
     icon = "fa-solid fa-code"
-    column_list = [Strategy.id, Strategy.name, Strategy.type, Strategy.session_id, Strategy.created_at]
-    column_searchable_list = [Strategy.name, Strategy.session_id]
+    column_list = [Strategy.id, Strategy.name, Strategy.type, Strategy.user_id, Strategy.session_id, Strategy.created_at]
+    column_searchable_list = [Strategy.name, Strategy.session_id, Strategy.user_id]
     column_sortable_list = [Strategy.id, Strategy.created_at]
 
 
@@ -75,7 +86,8 @@ class BacktestAdmin(ModelView, model=Backtest):
     name = "Backtest"
     name_plural = "Backtests"
     icon = "fa-solid fa-chart-line"
-    column_list = [Backtest.id, Backtest.strategy_id, Backtest.ticker, Backtest.initial_capital, Backtest.final_value, Backtest.created_at]
+    column_list = [Backtest.id, Backtest.strategy_id, Backtest.user_id, Backtest.ticker, Backtest.initial_capital, Backtest.final_value, Backtest.created_at]
+    column_searchable_list = [Backtest.user_id]
     column_sortable_list = [Backtest.id, Backtest.created_at]
 
 
@@ -83,7 +95,8 @@ class OrderAdmin(ModelView, model=Order):
     name = "Order"
     name_plural = "Orders"
     icon = "fa-solid fa-receipt"
-    column_list = [Order.id, Order.strategy_id, Order.ticker, Order.side, Order.amount, Order.status, Order.timestamp]
+    column_list = [Order.id, Order.strategy_id, Order.session_id, Order.user_id, Order.ticker, Order.side, Order.amount, Order.status, Order.timestamp]
+    column_searchable_list = [Order.session_id, Order.user_id]
     column_sortable_list = [Order.id, Order.timestamp]
 
 
@@ -91,7 +104,8 @@ class LiveStrategyAdmin(ModelView, model=LiveStrategy):
     name = "Live Strategy"
     name_plural = "Live Strategies"
     icon = "fa-solid fa-bolt"
-    column_list = [LiveStrategy.id, LiveStrategy.strategy_id, LiveStrategy.ticker, LiveStrategy.amount_usd, LiveStrategy.is_active, LiveStrategy.last_signal, LiveStrategy.total_pnl, LiveStrategy.started_at]
+    column_list = [LiveStrategy.id, LiveStrategy.strategy_id, LiveStrategy.user_id, LiveStrategy.ticker, LiveStrategy.amount_usd, LiveStrategy.is_active, LiveStrategy.last_signal, LiveStrategy.total_pnl, LiveStrategy.started_at]
+    column_searchable_list = [LiveStrategy.user_id]
     column_sortable_list = [LiveStrategy.id, LiveStrategy.started_at]
 
 
@@ -99,7 +113,8 @@ class LiveOrderAdmin(ModelView, model=LiveOrder):
     name = "Live Order"
     name_plural = "Live Orders"
     icon = "fa-solid fa-circle-dot"
-    column_list = [LiveOrder.id, LiveOrder.live_strategy_id, LiveOrder.ticker, LiveOrder.side, LiveOrder.amount_usd, LiveOrder.status, LiveOrder.sandbox, LiveOrder.timestamp]
+    column_list = [LiveOrder.id, LiveOrder.live_strategy_id, LiveOrder.session_id, LiveOrder.user_id, LiveOrder.ticker, LiveOrder.side, LiveOrder.amount_usd, LiveOrder.status, LiveOrder.sandbox, LiveOrder.timestamp]
+    column_searchable_list = [LiveOrder.session_id, LiveOrder.user_id]
     column_sortable_list = [LiveOrder.id, LiveOrder.timestamp]
 
 
@@ -107,7 +122,8 @@ class LightningPaymentAdmin(ModelView, model=LightningPayment):
     name = "Lightning Payment"
     name_plural = "Lightning Payments"
     icon = "fa-solid fa-bolt-lightning"
-    column_list = [LightningPayment.id, LightningPayment.session_id, LightningPayment.amount_sats, LightningPayment.type, LightningPayment.timestamp]
+    column_list = [LightningPayment.id, LightningPayment.session_id, LightningPayment.user_id, LightningPayment.amount_sats, LightningPayment.type, LightningPayment.timestamp]
+    column_searchable_list = [LightningPayment.session_id, LightningPayment.user_id]
     column_sortable_list = [LightningPayment.id, LightningPayment.timestamp]
 
 
@@ -116,6 +132,7 @@ class LightningPaymentAdmin(ModelView, model=LightningPayment):
 def create_admin(app) -> Admin:
     auth = _AdminAuth(secret_key=os.getenv("ADMIN_SECRET", "changeme"))
     admin = Admin(app, engine, authentication_backend=auth, title="LangStock Admin")
+    admin.add_view(SessionAdmin)
     admin.add_view(UserAdmin)
     admin.add_view(ConversationAdmin)
     admin.add_view(StrategyAdmin)

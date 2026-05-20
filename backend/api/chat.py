@@ -2,17 +2,73 @@
 Chat API endpoint — main interaction with the LangChain agent.
 """
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
 from openai import AuthenticationError, OpenAIError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
-from models.db import get_db, Conversation
+from models.db import get_db, Conversation, Session, Strategy, Backtest, LiveStrategy
 from agent.agent import run_agent
 
 router = APIRouter()
+
+SESSION_TIMEOUT = timedelta(minutes=30)
+
+
+def _user_id_from_request(request: Request) -> Optional[int]:
+    """Parse Bearer JWT and return user_id, or None if unauthenticated."""
+    auth = request.headers.get("authorization", "")
+    if not auth.startswith("Bearer "):
+        return None
+    try:
+        from api.auth import decode_jwt
+        from jose import JWTError
+        payload = decode_jwt(auth[7:])
+        return int(payload["sub"])
+    except Exception:
+        return None
+
+
+async def _ensure_session(session_id: str, user_id: Optional[int], db: AsyncSession) -> Session:
+    """
+    Look up or create a Session row. Handles parent_session_id linking:
+    if the same user has a session whose last_active_at is within SESSION_TIMEOUT,
+    the new session is tagged as a continuation (parent_session_id set).
+    """
+    result = await db.execute(select(Session).where(Session.session_id == session_id))
+    session = result.scalar_one_or_none()
+    now = datetime.utcnow()
+
+    if session is None:
+        parent_session_id = None
+        if user_id:
+            last = await db.execute(
+                select(Session)
+                .where(Session.user_id == user_id)
+                .where(Session.session_id != session_id)
+                .order_by(Session.last_active_at.desc())
+                .limit(1)
+            )
+            prev = last.scalar_one_or_none()
+            if prev and (now - prev.last_active_at) < SESSION_TIMEOUT:
+                parent_session_id = prev.session_id
+
+        session = Session(
+            session_id=session_id,
+            user_id=user_id,
+            parent_session_id=parent_session_id,
+            started_at=now,
+            last_active_at=now,
+        )
+        db.add(session)
+    else:
+        session.last_active_at = now
+        if user_id and session.user_id is None:
+            session.user_id = user_id
+
+    return session
 
 
 class ChatRequest(BaseModel):
@@ -29,11 +85,14 @@ class ChatResponse(BaseModel):
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
+async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = Depends(get_db)):
     """Send a message to the trading agent and get a response."""
 
-    # Get or create session
+    user_id = _user_id_from_request(http_request)
     session_id = request.session_id or str(uuid.uuid4())
+
+    # Register / update session
+    await _ensure_session(session_id, user_id, db)
 
     # Load conversation history
     result = await db.execute(
@@ -42,9 +101,11 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
     conversation = result.scalar_one_or_none()
 
     if not conversation:
-        conversation = Conversation(session_id=session_id)
+        conversation = Conversation(session_id=session_id, user_id=user_id)
         db.add(conversation)
         await db.flush()
+    elif user_id and conversation.user_id is None:
+        conversation.user_id = user_id
 
     history = conversation.get_messages()
     conversation.add_message("user", request.message)
@@ -63,6 +124,31 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=502, detail=f"OpenAI request failed: {exc}")
 
     response = agent_result["response"]
+    strategy_id = agent_result.get("strategy_id")
+    backtest_id = agent_result.get("backtest_id")
+    live_strategy_id = agent_result.get("live_strategy_id")
+
+    # Backfill session_id + user_id onto records the agent just created
+    if strategy_id:
+        row = await db.get(Strategy, strategy_id)
+        if row:
+            row.session_id = session_id
+            if user_id:
+                row.user_id = user_id
+
+    if backtest_id:
+        row = await db.get(Backtest, backtest_id)
+        if row:
+            row.session_id = session_id
+            if user_id:
+                row.user_id = user_id
+
+    if live_strategy_id:
+        row = await db.get(LiveStrategy, live_strategy_id)
+        if row:
+            row.session_id = session_id
+            if user_id:
+                row.user_id = user_id
 
     # Save assistant reply and update activity timestamp
     conversation.add_message("assistant", response)
@@ -72,9 +158,9 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
     return ChatResponse(
         response=response,
         session_id=session_id,
-        strategy_id=agent_result.get("strategy_id"),
-        backtest_id=agent_result.get("backtest_id"),
-        live_strategy_id=agent_result.get("live_strategy_id"),
+        strategy_id=strategy_id,
+        backtest_id=backtest_id,
+        live_strategy_id=live_strategy_id,
     )
 
 
