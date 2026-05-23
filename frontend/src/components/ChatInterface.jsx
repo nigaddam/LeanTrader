@@ -9,6 +9,13 @@ const QUICK_PROMPTS = [
   "Run a backtest on my strategy",
 ]
 
+const PRODUCTION_QUICK_PROMPTS = [
+  "Tell me about Bitcoin's current price",
+  "What should I know about my portfolio?",
+  "Show me assets I can buy on Kraken",
+  "Let's buy $10 of USDC",
+]
+
 const USE_CASES = [
   {
     label: 'Financial Advice',
@@ -36,11 +43,36 @@ const USE_CASES = [
   },
 ]
 
-function HeroLanding({ onSend, isLoading }) {
+const productionUseCases = USE_CASES.map((useCase) => {
+  if (useCase.label === 'Trading Bot') {
+    return {
+      label: 'Markets',
+      prompts: [
+        'Compare BTC and ETH today',
+        'What are the top crypto assets?',
+        'Explain USDC in simple terms',
+      ],
+    }
+  }
+  if (useCase.label === 'Connect Accounts') {
+    return {
+      label: 'Accounts',
+      prompts: [
+        'Fetch my current holdings',
+        'Help me connect Kraken',
+        'Show my recent orders',
+      ],
+    }
+  }
+  return useCase
+})
+
+function HeroLanding({ onSend, isLoading, showDevelopmentFeatures }) {
   const [input, setInput] = useState('')
   const [activeTab, setActiveTab] = useState(0)
   const inputRef = useRef(null)
   const containerRef = useRef(null)
+  const useCases = showDevelopmentFeatures ? USE_CASES : productionUseCases
 
   useEffect(() => { inputRef.current?.focus() }, [])
 
@@ -131,7 +163,7 @@ function HeroLanding({ onSend, isLoading }) {
           display: 'flex', gap: 6, padding: '12px 14px 10px',
           borderBottom: '1px solid #f1f5f9', overflowX: 'auto',
         }}>
-          {USE_CASES.map((uc, i) => (
+          {useCases.map((uc, i) => (
             <button
               key={uc.label}
               onClick={() => setActiveTab(i)}
@@ -151,7 +183,7 @@ function HeroLanding({ onSend, isLoading }) {
 
         {/* Prompt list */}
         <div style={{ padding: '6px 4px 8px' }}>
-          {USE_CASES[activeTab].prompts.map(p => (
+          {useCases[activeTab].prompts.map(p => (
             <button
               key={p}
               onClick={() => handleSend(p)}
@@ -175,7 +207,7 @@ function HeroLanding({ onSend, isLoading }) {
   )
 }
 
-export default function ChatInterface({ messages, isLoading, error, onSend, onClear, latestStrategyId, latestBacktestId, onAction }) {
+export default function ChatInterface({ messages, isLoading, error, onSend, onClear, latestStrategyId, latestBacktestId, onAction, showDevelopmentFeatures = true }) {
   const [input, setInput] = useState('')
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
@@ -200,7 +232,7 @@ export default function ChatInterface({ messages, isLoading, error, onSend, onCl
   }
 
   if (isEmpty) {
-    return <HeroLanding onSend={handleSend} isLoading={isLoading} />
+    return <HeroLanding onSend={handleSend} isLoading={isLoading} showDevelopmentFeatures={showDevelopmentFeatures} />
   }
 
   return (
@@ -250,7 +282,7 @@ export default function ChatInterface({ messages, isLoading, error, onSend, onCl
         padding: '8px 24px', borderTop: '1px solid #f1f5f9',
         display: 'flex', gap: 8, overflowX: 'auto', flexShrink: 0, background: '#ffffff',
       }}>
-        {QUICK_PROMPTS.map(p => (
+        {(showDevelopmentFeatures ? QUICK_PROMPTS : PRODUCTION_QUICK_PROMPTS).map(p => (
           <button
             key={p}
             onClick={() => handleSend(p)}

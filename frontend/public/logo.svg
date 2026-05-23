@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 72" fill="none">
+  <rect y="4" width="64" height="64" rx="16" fill="#0f172a"/>
+  <rect x="8" y="40" width="12" height="22" rx="4" fill="#ffffff" fill-opacity="0.5"/>
+  <rect x="26" y="24" width="12" height="38" rx="4" fill="#ffffff" fill-opacity="0.75"/>
+  <rect x="44" y="12" width="12" height="50" rx="4" fill="#ffffff"/>
+  <path d="M11 38L30 22L49 10" stroke="#6ee7b7" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="82" y="35" fill="#0f172a" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800">LangStock</text>
+  <text x="82" y="54" fill="#94a3b8" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="500">Finance OS</text>
+</svg>

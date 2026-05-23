@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import {
   Plus, ChevronDown, ChevronRight, ChevronUp,
-  BarChart2, Sigma, Zap, Coins,
+  BarChart2, Sigma, Zap, Coins, Briefcase, FileText, Plug, Database,
   TrendingUp as TrendUp, TrendingDown, Minus,
-  Check, LogIn, LogOut, X,
+  LogIn, LogOut, X,
   User, Settings, HelpCircle, Info, Mail,
 } from 'lucide-react'
 
@@ -204,27 +204,6 @@ function LiveInlineList({ liveStrategies, selectedId, onSelect }) {
   )
 }
 
-// ── Connection dots in sidebar ────────────────────────────────────────────────
-function ConnectionItem({ label, connected, onClick, active }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        width: '100%', display: 'flex', alignItems: 'center', gap: 9,
-        padding: '6px 10px 6px 28px', background: active ? '#eef2ff' : 'none',
-        border: 'none', borderRadius: 6, cursor: 'pointer', textAlign: 'left',
-      }}
-    >
-      <span style={{
-        width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-        background: connected ? '#16a34a' : '#d1d5db',
-      }} />
-      <span style={{ fontSize: 11, color: active ? '#4f46e5' : '#374151' }}>{label}</span>
-      {connected && <Check size={10} color="#16a34a" style={{ marginLeft: 'auto' }} />}
-    </button>
-  )
-}
-
 // ── Expandable tool section ───────────────────────────────────────────────────
 function ToolSection({ id, icon: Icon, label, activeView, onSelectView, children }) {
   const active = activeView === id
@@ -258,6 +237,7 @@ function ToolSection({ id, icon: Icon, label, activeView, onSelectView, children
 // ── Account footer with popover menu ─────────────────────────────────────────
 function AccountFooter({ user, onSignIn, onSignOut }) {
   const [open, setOpen] = useState(false)
+  const [avatarFailed, setAvatarFailed] = useState(false)
   const ref = useRef(null)
 
   useEffect(() => {
@@ -266,6 +246,55 @@ function AccountFooter({ user, onSignIn, onSignOut }) {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
+
+  useEffect(() => {
+    setAvatarFailed(false)
+  }, [user?.avatar_url])
+
+  const initials = (user?.name || user?.email || '?')
+    .split(/[\s@.]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0]?.toUpperCase())
+    .join('') || '?'
+
+  const avatarStyle = {
+    width: 34,
+    height: 34,
+    borderRadius: '50%',
+    flexShrink: 0,
+    border: '2px solid #e0e7ff',
+    background: 'linear-gradient(135deg, #0f172a, #4f46e5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    boxShadow: '0 1px 3px rgba(15,23,42,0.10)',
+  }
+
+  const Avatar = () => (
+    <div style={avatarStyle}>
+      {user.avatar_url && !avatarFailed ? (
+        <img
+          src={user.avatar_url}
+          alt=""
+          referrerPolicy="no-referrer"
+          onError={() => setAvatarFailed(true)}
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'block',
+            objectFit: 'cover',
+            borderRadius: '50%',
+          }}
+        />
+      ) : (
+        <span style={{ fontSize: 12, fontWeight: 850, color: '#ffffff', lineHeight: 1 }}>
+          {initials}
+        </span>
+      )}
+    </div>
+  )
 
   const menuItems = [
     { icon: User,        label: 'User Profile',      sub: 'Name, photo & details' },
@@ -402,17 +431,7 @@ function AccountFooter({ user, onSignIn, onSignOut }) {
         onMouseLeave={e => { if (!open) { e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = 'transparent' } }}
       >
         {/* Avatar */}
-        {user.avatar_url ? (
-          <img src={user.avatar_url} alt="" style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, border: '2px solid #e0e7ff' }} />
-        ) : (
-          <div style={{
-            width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 13, fontWeight: 700, color: '#ffffff', flexShrink: 0,
-          }}>
-            {user.name?.[0]?.toUpperCase() || '?'}
-          </div>
-        )}
+        <Avatar />
 
         {/* Name + email */}
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -438,9 +457,10 @@ export default function Sidebar({
   backtests, activeBacktestId, onSelectBacktest,
   models, selectedModel, onSelectModel, modelsLoading,
   liveStrategies, selectedLiveId, onSelectLive,
-  connectionState, onSelectConnector, selectedConnectorId,
   isMobile = false, isOpen = false, onClose,
   user, onSignIn, onSignOut,
+  showDevelopmentFeatures = true,
+  enableAdmin = false,
 }) {
   const mobileStyle = isMobile ? {
     position: 'fixed', top: 0, left: 0, height: '100%', zIndex: 200,
@@ -554,55 +574,71 @@ export default function Sidebar({
             onClick={() => onSelectView('assets')}
           />
 
-          <ToolSection
-            id="backtests" icon={BarChart2} label="Backtests"
-            activeView={activeView} onSelectView={onSelectView}
-          >
-            <BacktestInlineList
-              backtests={backtests} activeId={activeBacktestId}
-              onSelect={onSelectBacktest}
-            />
-          </ToolSection>
+          <NavItem
+            icon={Briefcase} label="Portfolio"
+            active={activeView === 'portfolio'}
+            onClick={() => onSelectView('portfolio')}
+          />
 
-          <ToolSection
-            id="models" icon={Sigma} label="Models"
-            activeView={activeView} onSelectView={onSelectView}
-          >
-            <ModelsInlineList
-              models={models} selectedModel={selectedModel}
-              onSelect={onSelectModel}
-            />
-          </ToolSection>
+          <NavItem
+            icon={FileText} label="Orders"
+            active={activeView === 'orders'}
+            onClick={() => onSelectView('orders')}
+          />
 
-          <ToolSection
-            id="live" icon={Zap} label="Live Trading"
-            activeView={activeView} onSelectView={onSelectView}
-          >
-            <LiveInlineList
-              liveStrategies={liveStrategies} selectedId={selectedLiveId}
-              onSelect={onSelectLive}
+          <NavItem
+            icon={Plug} label="Connect"
+            active={activeView === 'connections'}
+            onClick={() => onSelectView('connections')}
+          />
+
+          {enableAdmin && (
+            <NavItem
+              icon={Database} label="Data Admin"
+              active={activeView === 'adminData'}
+              onClick={() => onSelectView('adminData')}
             />
-          </ToolSection>
+          )}
         </Section>
 
-        <div style={{ height: 1, background: '#f1f5f9', margin: '8px 6px' }} />
+        {showDevelopmentFeatures && (
+          <>
+            <div style={{ height: 1, background: '#f1f5f9', margin: '8px 6px' }} />
 
-        {/* Connect */}
-        <Section label="Connect" defaultOpen={false}>
-          {[
-            { id: 'kraken', label: 'Kraken' },
-            { id: 'alby', label: 'Alby (Lightning)' },
-            { id: 'coinbase', label: 'Coinbase' },
-          ].map(c => (
-            <ConnectionItem
-              key={c.id}
-              label={c.label}
-              connected={connectionState?.[c.id]?.connected}
-              active={activeView === 'connections' && selectedConnectorId === c.id}
-              onClick={() => { onSelectConnector(c.id); onSelectView('connections') }}
-            />
-          ))}
-        </Section>
+            {/* Development tools are local/dev-only unless explicitly enabled. */}
+            <Section label="Development" defaultOpen={false}>
+              <ToolSection
+                id="backtests" icon={BarChart2} label="Backtests"
+                activeView={activeView} onSelectView={onSelectView}
+              >
+                <BacktestInlineList
+                  backtests={backtests} activeId={activeBacktestId}
+                  onSelect={onSelectBacktest}
+                />
+              </ToolSection>
+
+              <ToolSection
+                id="models" icon={Sigma} label="Models"
+                activeView={activeView} onSelectView={onSelectView}
+              >
+                <ModelsInlineList
+                  models={models} selectedModel={selectedModel}
+                  onSelect={onSelectModel}
+                />
+              </ToolSection>
+
+              <ToolSection
+                id="live" icon={Zap} label="Live Trading"
+                activeView={activeView} onSelectView={onSelectView}
+              >
+                <LiveInlineList
+                  liveStrategies={liveStrategies} selectedId={selectedLiveId}
+                  onSelect={onSelectLive}
+                />
+              </ToolSection>
+            </Section>
+          </>
+        )}
 
       </div>
       {/* Auth — pinned to bottom */}

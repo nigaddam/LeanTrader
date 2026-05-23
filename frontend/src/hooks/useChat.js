@@ -105,6 +105,7 @@ export function useChat() {
         id: uuidv4(),
         role: 'assistant',
         content: data.response,
+        orderIntent: data.order_intent,
         timestamp: new Date().toISOString(),
       }
 

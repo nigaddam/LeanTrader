@@ -14,9 +14,13 @@ import os
 
 def build_agent() -> AgentExecutor:
     """Build and return the LangChain agent executor."""
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY is missing. Add it to .env and restart the backend.")
+
     llm = ChatOpenAI(
         model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-        api_key=os.getenv("OPENAI_API_KEY"),
+        api_key=api_key,
         temperature=0.3,
         max_tokens=2000,
     )

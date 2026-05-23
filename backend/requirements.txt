@@ -20,6 +20,10 @@ numpy==1.26.4
 sqlalchemy>=2.0.36,<3
 greenlet>=3.1,<4
 aiosqlite==0.20.0
+asyncpg>=0.29.0          # required only when SUPABASE_DB_URL is set
+
+# Background jobs
+apscheduler>=3.10.4,<4
 
 # Admin panel
 sqladmin>=0.16,<1

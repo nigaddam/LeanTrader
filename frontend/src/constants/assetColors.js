@@ -1,0 +1,58 @@
+export const ASSET_COLORS = {
+  // Crypto
+  BTC:   '#f59e0b',
+  ETH:   '#627eea',
+  SOL:   '#9945ff',
+  XRP:   '#346aa9',
+  DOGE:  '#c2a633',
+  ADA:   '#0033ad',
+  LINK:  '#2a5ada',
+  LTC:   '#345d9d',
+  USDC:  '#2775ca',
+  USDT:  '#26a17b',
+  // Mega-cap stocks
+  AAPL:  '#555555',
+  MSFT:  '#00a4ef',
+  GOOGL: '#ea4335',
+  AMZN:  '#ff9900',
+  NVDA:  '#76b900',
+  META:  '#0866ff',
+  TSLA:  '#cc0000',
+  BRK:   '#8b0000',
+  BRKB:  '#8b0000',
+  V:     '#1a1f71',
+  JPM:   '#005eb8',
+  WMT:   '#0071ce',
+  JNJ:   '#cc0099',
+  PG:    '#003087',
+  XOM:   '#dc0000',
+  MA:    '#eb001b',
+  HD:    '#f96302',
+  BAC:   '#e31837',
+  ABBV:  '#071d49',
+  KO:    '#f40000',
+  PFE:   '#0093d0',
+  MRK:   '#00857c',
+  AVGO:  '#cc0000',
+  LLY:   '#d52b1e',
+  UNH:   '#005eb8',
+  COST:  '#005daa',
+  NFLX:  '#e50914',
+  CRM:   '#00a1e0',
+  AMD:   '#ed1c24',
+  ORCL:  '#c74634',
+  CSCO:  '#1ba0d7',
+  CVX:   '#003087',
+  // ETFs
+  SPY:   '#1e3a5f',
+  QQQ:   '#4f46e5',
+  VTI:   '#146c43',
+  GLD:   '#d4a017',
+  TLT:   '#475569',
+  IWM:   '#0f766e',
+}
+
+export function getAssetColor(symbol) {
+  const key = symbol?.toUpperCase().replace('/USD', '').replace('-USD', '')
+  return ASSET_COLORS[key] || '#64748b'
+}

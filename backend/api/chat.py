@@ -11,6 +11,7 @@ from sqlalchemy import select
 from pydantic import BaseModel
 from models.db import get_db, Conversation, Session, Strategy, Backtest, LiveStrategy
 from agent.agent import run_agent
+from api.orders import build_chat_trade_intent
 
 router = APIRouter()
 
@@ -82,6 +83,7 @@ class ChatResponse(BaseModel):
     strategy_id: Optional[int] = None
     backtest_id: Optional[int] = None
     live_strategy_id: Optional[int] = None
+    order_intent: Optional[dict] = None
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -112,9 +114,32 @@ async def chat(request: ChatRequest, http_request: Request, db: AsyncSession = D
     conversation.updated_at = datetime.utcnow()
     await db.commit()
 
+    order_intent = build_chat_trade_intent(request.message)
+    if order_intent:
+        mode = str(order_intent["mode"]).capitalize()
+        side = str(order_intent["side"]).capitalize()
+        value = f"${float(order_intent['amount_usd'] or 0):,.2f}"
+        response = (
+            f"I can set up a {mode} {side} order for {value} of {order_intent['ticker']}. "
+            "Review the ticket below and submit it when you're ready."
+        )
+        conversation.add_message("assistant", response)
+        conversation.updated_at = datetime.utcnow()
+        await db.commit()
+        return ChatResponse(
+            response=response,
+            session_id=session_id,
+            strategy_id=None,
+            backtest_id=None,
+            live_strategy_id=None,
+            order_intent=order_intent,
+        )
+
     # Run agent
     try:
         agent_result = await run_agent(request.message, history)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
     except AuthenticationError:
         raise HTTPException(
             status_code=401,

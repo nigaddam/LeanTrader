@@ -21,6 +21,7 @@ from models.db import (
     LiveOrder,
     LightningPayment,
 )
+from data_assets.models.asset import Asset, AssetSource, AssetPrice, AssetOHLCV
 
 class _AdminAuth(AuthenticationBackend):
     async def authenticate(self, request: Request) -> bool:
@@ -95,9 +96,14 @@ class OrderAdmin(ModelView, model=Order):
     name = "Order"
     name_plural = "Orders"
     icon = "fa-solid fa-receipt"
-    column_list = [Order.id, Order.strategy_id, Order.session_id, Order.user_id, Order.ticker, Order.side, Order.amount, Order.status, Order.timestamp]
-    column_searchable_list = [Order.session_id, Order.user_id]
-    column_sortable_list = [Order.id, Order.timestamp]
+    column_list = [
+        Order.id, Order.created_at, Order.user_id, Order.session_id,
+        Order.asset_name, Order.ticker, Order.side, Order.quantity,
+        Order.order_type, Order.estimated_value, Order.mode,
+        Order.status, Order.external_order_id, Order.strategy_name, Order.notes,
+    ]
+    column_searchable_list = [Order.session_id, Order.user_id, Order.ticker, Order.external_order_id]
+    column_sortable_list = [Order.id, Order.created_at, Order.status, Order.mode]
 
 
 class LiveStrategyAdmin(ModelView, model=LiveStrategy):
@@ -127,6 +133,45 @@ class LightningPaymentAdmin(ModelView, model=LightningPayment):
     column_sortable_list = [LightningPayment.id, LightningPayment.timestamp]
 
 
+# ── Asset platform views ──────────────────────────────────────────────────────
+
+class AssetAdmin(ModelView, model=Asset):
+    name = "Asset"
+    name_plural = "Assets"
+    icon = "fa-solid fa-coins"
+    column_list = [Asset.id, Asset.symbol, Asset.display_name, Asset.asset_type, Asset.default_source, Asset.is_active, Asset.updated_at]
+    column_searchable_list = [Asset.symbol, Asset.display_name, Asset.asset_type]
+    column_sortable_list = [Asset.id, Asset.symbol, Asset.asset_type, Asset.updated_at]
+
+
+class AssetSourceAdmin(ModelView, model=AssetSource):
+    name = "Asset Source"
+    name_plural = "Asset Sources"
+    icon = "fa-solid fa-link"
+    column_list = [AssetSource.id, AssetSource.asset_id, AssetSource.source_name, AssetSource.source_symbol, AssetSource.tradable, AssetSource.min_order_size]
+    column_searchable_list = [AssetSource.source_name, AssetSource.source_symbol]
+    column_sortable_list = [AssetSource.asset_id, AssetSource.source_name]
+
+
+class AssetPriceAdmin(ModelView, model=AssetPrice):
+    name = "Asset Price"
+    name_plural = "Asset Prices"
+    icon = "fa-solid fa-chart-line"
+    column_list = [AssetPrice.id, AssetPrice.asset_id, AssetPrice.source, AssetPrice.price, AssetPrice.change_24h_pct, AssetPrice.volume_24h, AssetPrice.market_cap, AssetPrice.timestamp]
+    column_searchable_list = [AssetPrice.source]
+    column_sortable_list = [AssetPrice.asset_id, AssetPrice.timestamp, AssetPrice.price]
+    can_delete = False
+
+
+class AssetOHLCVAdmin(ModelView, model=AssetOHLCV):
+    name = "OHLCV Candle"
+    name_plural = "OHLCV Candles"
+    icon = "fa-solid fa-chart-bar"
+    column_list = [AssetOHLCV.id, AssetOHLCV.asset_id, AssetOHLCV.interval, AssetOHLCV.timestamp, AssetOHLCV.open, AssetOHLCV.high, AssetOHLCV.low, AssetOHLCV.close, AssetOHLCV.volume, AssetOHLCV.source]
+    column_sortable_list = [AssetOHLCV.asset_id, AssetOHLCV.timestamp]
+    can_delete = False
+
+
 # ── Factory ───────────────────────────────────────────────────────────────────
 
 def create_admin(app) -> Admin:
@@ -141,4 +186,9 @@ def create_admin(app) -> Admin:
     admin.add_view(LiveStrategyAdmin)
     admin.add_view(LiveOrderAdmin)
     admin.add_view(LightningPaymentAdmin)
+    # Asset platform
+    admin.add_view(AssetAdmin)
+    admin.add_view(AssetSourceAdmin)
+    admin.add_view(AssetPriceAdmin)
+    admin.add_view(AssetOHLCVAdmin)
     return admin

@@ -94,18 +94,46 @@ class Order(Base):
     __tablename__ = "orders"
 
     id = Column(Integer, primary_key=True, index=True)
-    strategy_id = Column(Integer, ForeignKey("strategies.id"))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     session_id = Column(String, nullable=True, index=True)
     user_id = Column(Integer, nullable=True, index=True)
-    kraken_order_id = Column(String)
+    asset_name = Column(String)
     ticker = Column(String)
+    source = Column(String, default="Kraken")
     side = Column(String)               # buy | sell
+    quantity = Column(Float)
+    order_type = Column(String, default="market")
+    limit_price = Column(Float, nullable=True)
+    estimated_value = Column(Float)
+    mode = Column(String, default="paper")
+    status = Column(String, default="draft")
+    strategy_id = Column(Integer, ForeignKey("strategies.id"), nullable=True)
+    strategy_name = Column(String, nullable=True)
+    external_order_id = Column(String, nullable=True)
+    raw_request_json = Column(Text, default="{}")
+    raw_response_json = Column(Text, default="{}")
+    notes = Column(Text)
+
+    # Legacy fields retained for compatibility with existing local databases.
+    kraken_order_id = Column(String)
     amount = Column(Float)
     price = Column(Float)
-    status = Column(String, default="pending")  # pending | filled | cancelled
     timestamp = Column(DateTime, default=datetime.utcnow)
 
     strategy = relationship("Strategy", back_populates="orders")
+
+    def raw_request(self):
+        try:
+            return json.loads(self.raw_request_json or "{}")
+        except json.JSONDecodeError:
+            return {}
+
+    def raw_response(self):
+        try:
+            return json.loads(self.raw_response_json or "{}")
+        except json.JSONDecodeError:
+            return {}
 
 
 class LiveStrategy(Base):
@@ -207,6 +235,22 @@ def _migrate(conn):
     # session_id linkage on tables that were missing it
     for tbl in ("backtests", "live_strategies", "orders", "live_orders"):
         safe_add(tbl, "session_id", "TEXT")
+
+    # orders audit trail columns
+    safe_add("orders", "created_at", "DATETIME")
+    safe_add("orders", "updated_at", "DATETIME")
+    safe_add("orders", "asset_name", "TEXT")
+    safe_add("orders", "source", "TEXT DEFAULT 'Kraken'")
+    safe_add("orders", "quantity", "FLOAT")
+    safe_add("orders", "order_type", "TEXT DEFAULT 'market'")
+    safe_add("orders", "limit_price", "FLOAT")
+    safe_add("orders", "estimated_value", "FLOAT")
+    safe_add("orders", "mode", "TEXT DEFAULT 'paper'")
+    safe_add("orders", "strategy_name", "TEXT")
+    safe_add("orders", "external_order_id", "TEXT")
+    safe_add("orders", "raw_request_json", "TEXT DEFAULT '{}'")
+    safe_add("orders", "raw_response_json", "TEXT DEFAULT '{}'")
+    safe_add("orders", "notes", "TEXT")
 
     # live_strategies operational columns
     safe_add("live_strategies", "last_signal", "INTEGER")

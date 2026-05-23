@@ -37,6 +37,223 @@ The MVP focuses on Bitcoin (BTC/USD) with strategies based on SMA, RSI, and Boll
 
 ---
 
+## Near-Term Production Launch
+
+LangStock now supports three launch experiences:
+
+| URL / environment | Experience |
+|---|---|
+| `https://langstock.com/` | Public landing page and waitlist/signup flow |
+| `https://langstock.com/home` | Selective production app: Chat, Assets, Portfolio, Orders, Connect |
+| Local development | Full app, including Backtests, Models, Live Trading |
+
+Frontend launch flags:
+
+```bash
+# Production hosting build
+VITE_APP_EXPERIENCE=production
+VITE_APP_HOME_PATH=/home
+VITE_ENABLE_DEVELOPMENT_FEATURES=false
+
+# Local development
+VITE_APP_EXPERIENCE=development
+VITE_APP_HOME_PATH=/home
+VITE_ENABLE_DEVELOPMENT_FEATURES=true
+```
+
+Backend asset refresh flags:
+
+```bash
+APP_ENV=production
+SUPABASE_DB_URL=postgresql://...
+ENABLE_ASSET_SCHEDULER=false
+ASSET_WARM_STARTUP_REFRESH=false
+ASSET_REFRESH_PRODUCTION_ONLY=true
+```
+
+For Cloud Run, prefer `ENABLE_ASSET_SCHEDULER=false` and use Cloud Scheduler to call `POST /api/assets/admin/refresh`. That avoids duplicate in-app schedulers if Cloud Run scales beyond one instance.
+
+Production deployment checklist:
+
+1. Build frontend with production flags and deploy Firebase Hosting.
+2. Confirm Firebase serves `/` and `/home` through `frontend/dist/index.html`.
+3. Deploy backend to Cloud Run with secrets set in GCP, not committed files.
+4. Set `KRAKEN_SANDBOX=true` for paper/simulated trading during launch.
+5. Set `ASSET_REFRESH_PRODUCTION_ONLY=true`.
+6. Trigger `POST /api/assets/admin/refresh` once after backend deployment.
+7. Verify `/health`, `/api/assets`, `/api/data/status`, `/`, and `/home`.
+
+---
+
+# Production Deployment Runbook
+
+This runbook captures what we know today. It is intentionally conservative:
+do not push frontend/backend production changes until the data layer is ready
+and the exact Google Cloud commands are confirmed.
+
+## Current Hosting Model
+
+- Firebase Hosting serves the public web experience.
+- Google Cloud / `gcloud` likely deploys the backend/API service, probably Cloud Run.
+- `/` should remain the public landing page and waitlist/signup flow.
+- `/home` should serve the selective production app experience.
+- Production frontend env vars should hide Development features.
+- Production data jobs should preferably be triggered by Cloud Scheduler calling Cloud Run endpoints, not by in-app APScheduler running inside every Cloud Run instance.
+
+## Frontend / Firebase
+
+Known config:
+- `firebase.json` serves `frontend/dist`.
+- All routes rewrite to `/index.html`, which lets React render `/` or `/home`.
+- `frontend/src/Root.jsx` decides whether to show landing or the app.
+
+Build env for production frontend:
+
+```bash
+VITE_APP_EXPERIENCE=production
+VITE_APP_HOME_PATH=/home
+VITE_ENABLE_DEVELOPMENT_FEATURES=false
+```
+
+Deploy command:
+
+```bash
+# TODO: confirm final production project/target before running.
+# Observed previously from local setup:
+firebase deploy --only hosting
+```
+
+Rollback:
+
+```bash
+# TODO: confirm Firebase rollback workflow/project target.
+# Likely use Firebase Console Hosting release history or firebase hosting:clone.
+```
+
+## Backend / Google Cloud
+
+Expected model:
+- FastAPI backend deployed to Cloud Run or a similar Google Cloud runtime.
+- Secrets and env vars should be configured in Google Cloud, not committed in `.env`.
+
+Required production env vars to confirm:
+
+```bash
+APP_ENV=production
+ADMIN_API_SECRET=...
+OPENAI_API_KEY=...
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+JWT_SECRET=...
+SUPABASE_DB_URL=...
+FRONTEND_URL=https://langstock.com
+CORS_ORIGINS=https://langstock.com
+KRAKEN_SANDBOX=true
+ASSET_REFRESH_PRODUCTION_ONLY=true
+ENABLE_ASSET_SCHEDULER=false
+ASSET_WARM_STARTUP_REFRESH=false
+```
+
+Internal data operations endpoints require:
+
+```bash
+X-Admin-Secret: <ADMIN_API_SECRET>
+```
+
+In local development only, if `APP_ENV=development` and `ADMIN_API_SECRET` is
+empty, admin endpoints are allowed without the header. In production, missing
+`ADMIN_API_SECRET` fails closed.
+
+Cloud Run deploy:
+
+```bash
+# TODO: confirm service name, region, image/build method, and secret wiring.
+# Do not invent this command until current GCP setup is verified.
+gcloud run deploy <TODO_SERVICE_NAME> ...
+```
+
+Rollback:
+
+```bash
+# TODO: confirm service name and preferred rollback method.
+# Options include Cloud Run console traffic rollback or gcloud run services update-traffic.
+```
+
+## Data Jobs / Cloud Scheduler
+
+Recommended production model:
+- Disable in-app scheduler on Cloud Run: `ENABLE_ASSET_SCHEDULER=false`.
+- Keep production refresh scoped: `ASSET_REFRESH_PRODUCTION_ONLY=true`.
+- Use Cloud Scheduler to call backend refresh endpoints a few times per day.
+
+Endpoint:
+
+```bash
+POST https://<backend-host>/api/assets/admin/refresh?asset_type=stock
+POST https://<backend-host>/api/assets/admin/refresh?asset_type=crypto
+POST https://<backend-host>/api/assets/admin/refresh?asset_type=candles
+```
+
+Cloud Scheduler command:
+
+```bash
+# TODO: confirm backend URL, service account/OIDC auth, region, and cadence.
+gcloud scheduler jobs create http <TODO_JOB_NAME> ...
+```
+
+Disable jobs:
+
+```bash
+# TODO: confirm job names.
+gcloud scheduler jobs pause <TODO_JOB_NAME>
+```
+
+Manual refresh:
+
+```bash
+curl -X POST \
+  -H "X-Admin-Secret: <ADMIN_API_SECRET>" \
+  "https://<backend-host>/api/assets/admin/refresh?asset_type=stock"
+```
+
+New internal data admin APIs:
+
+```bash
+GET   /api/admin/data/runs
+GET   /api/admin/data/assets
+POST  /api/admin/data/refresh
+POST  /api/admin/data/assets
+PATCH /api/admin/data/assets/{symbol}
+POST  /api/admin/data/assets/{symbol}/refresh
+```
+
+Enable the internal UI locally:
+
+```bash
+VITE_ENABLE_ADMIN=true
+```
+
+Then open:
+
+```bash
+http://localhost:3000/home/admin/data
+```
+
+## Smoke Test Checklist
+
+- `https://langstock.com/` shows landing page.
+- `https://langstock.com/home` shows the selective app.
+- Production app sidebar shows only Chat and Tools: Assets, Portfolio, Orders, Connect.
+- Development features are hidden in production.
+- Backend `/health` returns `ok`.
+- `GET /api/assets` returns seeded assets.
+- `GET /api/data/status` returns freshness and scheduler/job status.
+- Manual refresh endpoint queues a refresh.
+- Job run records appear after refreshes.
+- No secrets are visible in frontend assets, logs, or committed files.
+
+---
+
 ## Architecture
 
 ```

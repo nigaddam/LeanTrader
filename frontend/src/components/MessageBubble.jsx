@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { BarChart2, Bookmark, Rocket, Copy, Check } from 'lucide-react'
+import TradeTicket from './TradeTicket'
 
 // ── Markdown-lite parser ──────────────────────────────────────────────────────
 function parseContent(content) {
@@ -164,7 +165,12 @@ export default function MessageBubble({ message, onAction }) {
             ? <CodeBlock key={i} lang={part.lang} content={part.content} />
             : <TextBlock key={i} content={part.content} />
         )}
-        {message.id !== 'welcome' && <AssistantActions onAction={onAction} />}
+        {message.orderIntent && (
+          <div style={{ marginTop: 14 }}>
+            <TradeTicket initialIntent={message.orderIntent} compact channel="chat" />
+          </div>
+        )}
+        {message.id !== 'welcome' && !message.orderIntent && <AssistantActions onAction={onAction} />}
         <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 6 }}>{time}</div>
       </div>
     </div>
